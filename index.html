@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prime Lattice: Spatial Arithmetic Tournament</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Style -->
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+    <header>
+        <div class="title-container">
+            <h1>Prime Lattice</h1>
+        </div>
+        <div class="subtitle">Deterministic Ruleset & Tournament Logic</div>
+    </header>
+
+    <div class="main-container">
+        
+        <!-- Left Column: Match Status & Logs -->
+        <div class="glass-panel">
+            <div class="panel-header">
+                <h2>Match Controller</h2>
+                <span id="turn-indicator" style="font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; background: rgba(255,215,0,0.1); border: 1px solid var(--gold); color: var(--gold);">
+                    Gold Turn
+                </span>
+            </div>
+            
+            <div id="debt-alert" class="debt-banner" style="display: none;">
+                ⚠️ ABSOLVE DEBT: Choose a friendly piece to absorb <span id="debt-amount">0</span> debt.
+            </div>
+            
+            <div class="score-badge" id="timer-badge" style="border-color: rgba(199, 44, 255, 0.3); background: rgba(199, 44, 255, 0.03);">
+                <span class="badge-label">⏳ Turn Time Limit</span>
+                <span id="turn-timer" class="badge-value" style="color: var(--purple-anomaly);">30s</span>
+            </div>
+            
+            <div class="score-badge">
+                <span class="badge-label">Gold Active Total</span>
+                <span id="gold-total" class="badge-value gold-text">165</span>
+            </div>
+            <div class="score-badge">
+                <span class="badge-label">Silver Active Total</span>
+                <span id="silver-total" class="badge-value cyan-text">165</span>
+            </div>
+            
+            <div class="score-badge">
+                <span class="badge-label">Gold Debt</span>
+                <span id="gold-debt" class="badge-value" style="color: #ff8a9f;">0</span>
+            </div>
+            <div class="score-badge">
+                <span class="badge-label">Silver Debt</span>
+                <span id="silver-debt" class="badge-value" style="color: #ff8a9f;">0</span>
+            </div>
+            
+            <div class="button-grid">
+                <button id="btn-undo" class="btn" onclick="gameEngine.undo()">
+                    <span>↩</span> Undo
+                </button>
+                <button id="btn-restart" class="btn btn-danger" onclick="restartGame()">
+                    <span>↻</span> Reset
+                </button>
+                <button id="btn-timer-toggle" class="btn btn-gold full-width" onclick="toggleTimer()">
+                    <span>⏸</span> Pause Timer
+                </button>
+                <button id="btn-gridlock" class="btn btn-gold full-width" onclick="gameEngine.declareGridlock()">
+                    <span>🔒</span> Claim Gridlock Draw
+                </button>
+                <button id="btn-concede" class="btn btn-danger full-width" onclick="gameEngine.submitMatch(1)">
+                    <span>🏳️</span> Concede Lead
+                </button>
+            </div>
+            
+            <div class="panel-header" style="margin-top: 25px;">
+                <h2>Event Logs</h2>
+            </div>
+            <div id="log-feed" class="log-terminal">
+                <!-- Log entries will be inserted here dynamically -->
+            </div>
+        </div>
+        
+        <!-- Center Column: Hexagonal Board Canvas -->
+        <div class="glass-panel board-container">
+            <div class="panel-header" style="width: 100%;">
+                <h2>Lattice Arena</h2>
+                <div style="display: flex; gap: 8px;">
+                    <button id="mode-pvp" class="btn" style="padding: 6px 12px; font-size: 0.75rem;" onclick="setGameMode('pvp')">Local PvP</button>
+                    <button id="mode-ai" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="setGameMode('ai')">VS AI</button>
+                    <button id="mode-tut" class="btn" style="padding: 6px 12px; font-size: 0.75rem;" onclick="setGameMode('tutorial')">Tutorial</button>
+                </div>
+            </div>
+            
+            <svg id="board-svg" class="svg-board" viewBox="0 0 650 600">
+                <defs>
+                    <!-- Piece Shading Gradients -->
+                    <radialGradient id="grad-gold-piece" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#2a1f0a" />
+                        <stop offset="70%" stop-color="#120c04" />
+                        <stop offset="100%" stop-color="#070409" />
+                    </radialGradient>
+                    <radialGradient id="grad-silver-piece" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#0b232e" />
+                        <stop offset="70%" stop-color="#040f14" />
+                        <stop offset="100%" stop-color="#070409" />
+                    </radialGradient>
+                    <radialGradient id="grad-anomaly-piece" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#2d0b3b" />
+                        <stop offset="70%" stop-color="#15041c" />
+                        <stop offset="100%" stop-color="#070409" />
+                    </radialGradient>
+                    
+                    <filter id="glow-gold" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                    <filter id="glow-purple" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="4" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                </defs>
+                
+                <!-- Hexagons, grid, lines, and piece groups will be injected here -->
+                <g id="grid-group"></g>
+                <g id="effects-group"></g>
+                <g id="pieces-group"></g>
+            </svg>
+        </div>
+        
+        <!-- Right Column: Tournament Simulator & Tutorial Details -->
+        <div class="glass-panel" id="right-side-panel">
+            <div class="panel-header">
+                <h2>Tournament Standings</h2>
+            </div>
+            <p style="font-size: 0.8rem; color: #8c82b0; margin-bottom: 15px; line-height: 1.4;">
+                Rankings are recalculated using the **Point-Lead Average** across matches. The lower rank takes initiative.
+            </p>
+            
+            <div class="score-badge">
+                <span class="badge-label">Matches Completed</span>
+                <span id="match-count" class="badge-value">0</span>
+            </div>
+            
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th class="rank-index">#</th>
+                        <th>Competitor</th>
+                        <th>Record</th>
+                        <th>P-L Avg</th>
+                        <th style="text-align: right;">Rating</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <tr class="active-user">
+                        <td class="rank-index">1</td>
+                        <td class="player-name">Gold (Player)</td>
+                        <td id="p1-record" style="font-family: monospace;">0-0-0</td>
+                        <td id="p1-avg">0.0</td>
+                        <td class="player-rating" id="p1-rating">1500</td>
+                    </tr>
+                    <tr>
+                        <td class="rank-index">2</td>
+                        <td class="player-name">Silver (AI Engine)</td>
+                        <td id="p2-record" style="font-family: monospace;">0-0-0</td>
+                        <td id="p2-avg">0.0</td>
+                        <td class="player-rating" id="p2-rating">1500</td>
+                    </tr>
+                    <tr>
+                        <td class="rank-index">3</td>
+                        <td class="player-name">OmniNet-Beta</td>
+                        <td style="font-family: monospace; opacity: 0.7;">5-3-2</td>
+                        <td>+12.4</td>
+                        <td class="player-rating">1420</td>
+                    </tr>
+                    <tr>
+                        <td class="rank-index">4</td>
+                        <td class="player-name">PrimeSieve-9</td>
+                        <td style="font-family: monospace; opacity: 0.7;">2-6-2</td>
+                        <td>-8.2</td>
+                        <td class="player-rating">1310</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <!-- Dynamic Tutorial UI -->
+            <div id="tutorial-card" class="glass-panel tutorial-panel" style="display: none; margin-top: 25px; padding: 15px;">
+                <div class="panel-header" style="border: none; margin: 0; padding: 0 0 10px 0;">
+                    <h3 style="color: var(--purple-anomaly); font-size: 0.95rem; text-transform: uppercase;">Tutorial Guide</h3>
+                </div>
+                <div id="tutorial-content" class="tutorial-text">
+                    Select a piece and learn the mathematical rules of the Lattice.
+                </div>
+                <div class="button-grid" style="margin-top: 10px;">
+                    <button id="tut-prev-btn" class="btn" onclick="prevTutorialStep()">Back</button>
+                    <button id="tut-next-btn" class="btn btn-primary" onclick="nextTutorialStep()">Next</button>
+                    <button id="tut-demo-btn" class="btn btn-gold full-width" onclick="autoPlayTutorialStage()">👁️ Show Me Action</button>
+                </div>
+                <div class="tutorial-step-dots" id="tutorial-dots">
+                    <span class="dot active"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Core Game Scripts -->
+    <script src="game.js"></script>
+    <script src="ui.js"></script>
+    
+    <!-- Floating Draggable & Resizable Rules Codex -->
+    <div id="rules-codex" class="draggable-panel">
+        <div id="rules-codex-header" class="panel-header-drag">
+            <h3>Lattice Codex</h3>
+            <button class="panel-toggle-btn" onclick="toggleCodexCollapse()" title="Minimize/Maximize Codex">—</button>
+        </div>
+        <div class="panel-scroll-content">
+            <!-- Operators Section -->
+            <div class="codex-section">
+                <div class="codex-section-title">Geometric Operators</div>
+                <div class="codex-item">
+                    <div class="codex-key green">+ Add</div>
+                    <div class="codex-desc">Move orthogonally into friendly piece. <strong>Fuses values by addition</strong>.</div>
+                </div>
+                <div class="codex-item">
+                    <div class="codex-key purple">× Mult</div>
+                    <div class="codex-desc">Move diagonally into friendly piece. <strong>Fuses values by multiplication</strong>.</div>
+                </div>
+                <div class="codex-item">
+                    <div class="codex-key red">- Clash</div>
+                    <div class="codex-desc">Move into enemy cell. <strong>Subtracts attacker value from defender</strong>. Defender destroyed if value &le; 0. Excess damage dealt as <strong>Overflow Debt</strong>.</div>
+                </div>
+                <div class="codex-item">
+                    <div class="codex-key cyan">&divide; Div</div>
+                    <div class="codex-desc">Move piece to <strong>flank</strong> an even-valued enemy orthogonally between two friendly pieces. Cleaves target value in half, adding components to flanking pieces.</div>
+                </div>
+            </div>
+
+            <!-- Piece Roles Section -->
+            <div class="codex-section">
+                <div class="codex-section-title">Piece Hierarchy</div>
+                <div class="codex-item">
+                    <div class="codex-key gold">King</div>
+                    <div class="codex-desc">Sovereign Prime (e.g. 47). <strong>Immune to division</strong>. Losing King ends game.</div>
+                </div>
+                <div class="codex-item">
+                    <div class="codex-key gold">Queen</div>
+                    <div class="codex-desc">Apex Composite (e.g. 48). Sliding move. Devastating power, but <strong>highly vulnerable to division</strong>.</div>
+                </div>
+                <div class="codex-item">
+                    <div class="codex-key gold">Rooks</div>
+                    <div class="codex-desc">Even Composites (e.g. 18). <strong>Orthogonal slides</strong>.</div>
+                </div>
+                <div class="codex-item">
+                    <div class="codex-key gold">Bishops</div>
+                    <div class="codex-desc">Odd Composites (e.g. 9/15). <strong>Diagonal slides</strong>. Immune to division by 2.</div>
+                </div>
+                <div class="codex-item">
+                    <div class="codex-key gold">Knights</div>
+                    <div class="codex-desc">Primes (e.g. 5/7). <strong>Leaping moves</strong> (asymmetric orthogonal-diagonal steps).</div>
+                </div>
+                <div class="codex-item">
+                    <div class="codex-key gold">Pawns</div>
+                    <div class="codex-desc">Root Primes (e.g. 2/3). 1-step moves. Devastating flanking triggers.</div>
+                </div>
+            </div>
+
+            <!-- Fermat Anomaly Section -->
+            <div class="codex-section" style="margin-bottom: 0;">
+                <div class="codex-section-title">Fermat Anomaly Trap</div>
+                <div class="codex-item" style="margin-bottom: 0;">
+                    <div class="codex-key purple">Anomaly</div>
+                    <div class="codex-desc">Fusions yielding a <strong>Fermat Pseudoprime</strong> (e.g. 341, 561, 645) trigger Anomaly state. Anomalies are unstable and <strong>incur double damage in clashes</strong>.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Interactive Tutorial Tooltip Blurb -->
+    <div id="tutorial-blurb" class="tutorial-blurb" style="display: none;"></div>
+
+    <!-- Celebration Overlay -->
+    <div id="celebration-overlay">
+        <canvas id="celebration-canvas"></canvas>
+        <div class="celebration-card">
+            <div id="celebration-icon" style="font-size: 4rem;">🏆</div>
+            <h2 id="celebration-title" class="celebration-title">Victory!</h2>
+            <p id="celebration-message" class="celebration-msg">Gold claims victory!</p>
+            <button class="btn btn-primary" onclick="closeCelebrationAndReset()" style="padding: 15px 30px; font-size: 1rem; border-radius: 15px;">
+                Re-enter Lattice Arena
+            </button>
+        </div>
+    </div>
+</body>
+</html>
