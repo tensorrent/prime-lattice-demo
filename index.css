@@ -938,3 +938,42 @@ header {
     display: block;
     width: 0;
 }
+
+
+.projection-line {
+    stroke-width: 2.2;
+    stroke-dasharray: 6, 4;
+    stroke-linecap: round;
+    opacity: 0.65;
+    animation: projection-line-flow 1.2s linear infinite;
+    pointer-events: none;
+}
+
+.projection-line-move {
+    stroke: rgba(255, 255, 255, 0.35);
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.15));
+}
+
+.projection-line-add {
+    stroke: var(--green-add);
+    filter: drop-shadow(0 0 4px var(--green-add));
+}
+
+.projection-line-multiply {
+    stroke: var(--violet-mult);
+    filter: drop-shadow(0 0 4px var(--violet-mult));
+}
+
+.projection-line-clash {
+    stroke: var(--red-clash);
+    filter: drop-shadow(0 0 4px var(--red-clash));
+}
+
+@keyframes projection-line-flow {
+    from {
+        stroke-dashoffset: 20;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
