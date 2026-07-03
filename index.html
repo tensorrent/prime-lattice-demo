@@ -88,10 +88,19 @@
         <div class="glass-panel board-container">
             <div class="panel-header" style="width: 100%;">
                 <h2>Lattice Arena</h2>
-                <div style="display: flex; gap: 8px;">
-                    <button id="mode-pvp" class="btn" style="padding: 6px 12px; font-size: 0.75rem;" onclick="setGameMode('pvp')">Local PvP</button>
-                    <button id="mode-ai" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="setGameMode('ai')">VS AI</button>
-                    <button id="mode-tut" class="btn" style="padding: 6px 12px; font-size: 0.75rem;" onclick="setGameMode('tutorial')">Tutorial</button>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+                    <div style="display: flex; gap: 8px;">
+                        <button id="mode-pvp" class="btn" style="padding: 6px 12px; font-size: 0.75rem;" onclick="setGameMode('pvp')">Local PvP</button>
+                        <button id="mode-ai" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="setGameMode('ai')">VS AI</button>
+                        <button id="mode-tut" class="btn" style="padding: 6px 12px; font-size: 0.75rem;" onclick="setGameMode('tutorial')">Tutorial</button>
+                    </div>
+                    <!-- AI Difficulty Controls -->
+                    <div id="ai-difficulty-container" style="display: flex; gap: 4px; align-items: center;">
+                        <span style="font-size: 0.65rem; color: #8c82b0; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px;">AI CPU:</span>
+                        <button id="diff-easy" class="btn" style="padding: 4px 8px; font-size: 0.65rem; min-width: auto;" onclick="setAIDifficulty('easy')">Easy</button>
+                        <button id="diff-medium" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.65rem; min-width: auto;" onclick="setAIDifficulty('medium')">Medium</button>
+                        <button id="diff-hard" class="btn" style="padding: 4px 8px; font-size: 0.65rem; min-width: auto;" onclick="setAIDifficulty('hard')">Hard</button>
+                    </div>
                 </div>
             </div>
             
