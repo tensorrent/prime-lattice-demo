@@ -1,332 +1,150 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prime Lattice: Spatial Arithmetic Tournament</title>
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
-    <!-- Style -->
-    <link rel="stylesheet" href="index.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
 </head>
 <body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; padding: 0; background: #05040a; overflow: hidden; }
+    @keyframes dashflow { from { stroke-dashoffset: 20; } to { stroke-dashoffset: 0; } }
+    @keyframes pulseGlow { from { opacity: 0.35; } to { opacity: 0.9; } }
+    @keyframes debtFlash { from { box-shadow: 0 0 8px rgba(255,59,95,0.25); } to { box-shadow: 0 0 26px rgba(255,59,95,0.6); } }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+  </style>
+  <script src="game.js"></script>
+</helmet>
+<div style="position: fixed; inset: 0; background: radial-gradient(ellipse at 20% 0%, rgba(38,24,80,0.45) 0%, transparent 55%), radial-gradient(ellipse at 85% 100%, rgba(10,45,70,0.4) 0%, transparent 55%), radial-gradient(circle at 50% 50%, #0a0716 0%, #04030a 100%); font-family: 'Outfit', sans-serif; color: #efe9ff; overflow: hidden;" data-screen-label="Prime Lattice Board">
 
-    <header>
-        <div class="title-container">
-            <h1>Prime Lattice</h1>
-        </div>
-        <div class="subtitle">Deterministic Ruleset & Tournament Logic</div>
-    </header>
+  <canvas ref="{{ bgCanvasRef }}" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
 
-    <div class="main-container">
-        
-        <!-- Left Column: Match Status & Logs -->
-        <div class="glass-panel">
-            <div class="panel-header">
-                <h2>Match Controller</h2>
-                <span id="turn-indicator" style="font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; background: rgba(255,215,0,0.1); border: 1px solid var(--gold); color: var(--gold);">
-                    Gold Turn
-                </span>
-            </div>
-            
-            <div id="debt-alert" class="debt-banner" style="display: none;">
-                ⚠️ ABSOLVE DEBT: Choose a friendly piece to absorb <span id="debt-amount">0</span> debt.
-            </div>
-            
-            <div class="score-badge" id="timer-badge" style="border-color: rgba(199, 44, 255, 0.3); background: rgba(199, 44, 255, 0.03);">
-                <span class="badge-label">⏳ Turn Time Limit</span>
-                <span id="turn-timer" class="badge-value" style="color: var(--purple-anomaly);">30s</span>
-            </div>
-            
-            <div class="score-badge">
-                <span class="badge-label">Gold Active Total</span>
-                <span id="gold-total" class="badge-value gold-text">165</span>
-            </div>
-            <div class="score-badge">
-                <span class="badge-label">Silver Active Total</span>
-                <span id="silver-total" class="badge-value cyan-text">165</span>
-            </div>
-            
-            <div class="score-badge">
-                <span class="badge-label">Gold Debt</span>
-                <span id="gold-debt" class="badge-value" style="color: #ff8a9f;">0</span>
-            </div>
-            <div class="score-badge">
-                <span class="badge-label">Silver Debt</span>
-                <span id="silver-debt" class="badge-value" style="color: #ff8a9f;">0</span>
-            </div>
-            
-            <div class="button-grid">
-                <button id="btn-undo" class="btn" onclick="gameEngine.undo()">
-                    <span>↩</span> Undo
-                </button>
-                <button id="btn-restart" class="btn btn-danger" onclick="restartGame()">
-                    <span>↻</span> Reset
-                </button>
-                <button id="btn-timer-toggle" class="btn btn-gold full-width" onclick="toggleTimer()">
-                    <span>⏸</span> Pause Timer
-                </button>
-                <button id="btn-gridlock" class="btn btn-gold full-width" onclick="gameEngine.declareGridlock()">
-                    <span>🔒</span> Claim Gridlock Draw
-                </button>
-                <button id="btn-concede" class="btn btn-danger full-width" onclick="gameEngine.submitMatch(1)">
-                    <span>🏳️</span> Concede Lead
-                </button>
-            </div>
-            
-            <div class="panel-header" style="margin-top: 25px;">
-                <h2>Event Logs</h2>
-            </div>
-            <div id="log-feed" class="log-terminal">
-                <!-- Log entries will be inserted here dynamically -->
-            </div>
-        </div>
-        
-        <!-- Center Column: Hexagonal Board Canvas -->
-        <div class="glass-panel board-container">
-            <div class="panel-header" style="width: 100%;">
-                <h2>Lattice Arena</h2>
-                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
-                    <div style="display: flex; gap: 8px;">
-                        <button id="mode-pvp" class="btn" style="padding: 6px 12px; font-size: 0.75rem;" onclick="setGameMode('pvp')">Local PvP</button>
-                        <button id="mode-ai" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="setGameMode('ai')">VS AI</button>
-                        <button id="mode-tut" class="btn" style="padding: 6px 12px; font-size: 0.75rem;" onclick="setGameMode('tutorial')">Tutorial</button>
-                    </div>
-                    <!-- AI Settings Container -->
-                    <div id="ai-settings-container" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                        <!-- AI Difficulty Controls -->
-                        <div id="ai-difficulty-container" style="display: flex; gap: 4px; align-items: center;">
-                            <span style="font-size: 0.65rem; color: #8c82b0; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px;">AI CPU:</span>
-                            <button id="diff-easy" class="btn" style="padding: 4px 8px; font-size: 0.65rem; min-width: auto;" onclick="setAIDifficulty('easy')">Easy</button>
-                            <button id="diff-medium" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.65rem; min-width: auto;" onclick="setAIDifficulty('medium')">Medium</button>
-                            <button id="diff-hard" class="btn" style="padding: 4px 8px; font-size: 0.65rem; min-width: auto;" onclick="setAIDifficulty('hard')">Hard</button>
-                        </div>
-                        <!-- AI Speed Controls -->
-                        <div id="ai-speed-container" style="display: flex; gap: 4px; align-items: center;">
-                            <span style="font-size: 0.65rem; color: #8c82b0; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px;">AI Speed:</span>
-                            <button id="speed-quick" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.65rem; min-width: auto;" onclick="setAISpeed('quick')">Quick</button>
-                            <button id="speed-2x" class="btn" style="padding: 4px 8px; font-size: 0.65rem; min-width: auto;" onclick="setAISpeed('2x')">2x</button>
-                            <button id="speed-30s" class="btn" style="padding: 4px 8px; font-size: 0.65rem; min-width: auto;" onclick="setAISpeed('30s')">30s</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <svg id="board-svg" class="svg-board" viewBox="0 0 650 600">
-                <defs>
-                    <!-- Piece Shading Gradients -->
-                    <radialGradient id="grad-gold-piece" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stop-color="#2a1f0a" />
-                        <stop offset="70%" stop-color="#120c04" />
-                        <stop offset="100%" stop-color="#070409" />
-                    </radialGradient>
-                    <radialGradient id="grad-silver-piece" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stop-color="#0b232e" />
-                        <stop offset="70%" stop-color="#040f14" />
-                        <stop offset="100%" stop-color="#070409" />
-                    </radialGradient>
-                    <radialGradient id="grad-anomaly-piece" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stop-color="#2d0b3b" />
-                        <stop offset="70%" stop-color="#15041c" />
-                        <stop offset="100%" stop-color="#070409" />
-                    </radialGradient>
-                    
-                    <filter id="glow-gold" x="-20%" y="-20%" width="140%" height="140%">
-                        <feGaussianBlur stdDeviation="3" result="blur" />
-                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                    </filter>
-                    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
-                        <feGaussianBlur stdDeviation="3" result="blur" />
-                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                    </filter>
-                    <filter id="glow-purple" x="-20%" y="-20%" width="140%" height="140%">
-                        <feGaussianBlur stdDeviation="4" result="blur" />
-                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                    </filter>
-                </defs>
-                
-                <!-- Hexagons, grid, lines, and piece groups will be injected here -->
-                <g id="grid-group"></g>
-                <g id="effects-group"></g>
-                <g id="pieces-group"></g>
-            </svg>
-        </div>
-        
-        <!-- Right Column: Tournament Simulator & Tutorial Details -->
-        <div class="glass-panel" id="right-side-panel">
-            <div class="panel-header">
-                <h2>Tournament Standings</h2>
-            </div>
-            <p style="font-size: 0.8rem; color: #8c82b0; margin-bottom: 15px; line-height: 1.4;">
-                Rankings are recalculated using the **Point-Lead Average** across matches. The lower rank takes initiative.
-            </p>
-            
-            <div class="score-badge">
-                <span class="badge-label">Matches Completed</span>
-                <span id="match-count" class="badge-value">0</span>
-            </div>
-            
-            <table class="leaderboard-table">
-                <thead>
-                    <tr>
-                        <th class="rank-index">#</th>
-                        <th>Competitor</th>
-                        <th>Record</th>
-                        <th>P-L Avg</th>
-                        <th style="text-align: right;">Rating</th>
-                    </tr>
-                </thead>
-                <tbody id="leaderboard-body">
-                    <tr class="active-user">
-                        <td class="rank-index">1</td>
-                        <td class="player-name">Gold (Player)</td>
-                        <td id="p1-record" style="font-family: monospace;">0-0-0</td>
-                        <td id="p1-avg">0.0</td>
-                        <td class="player-rating" id="p1-rating">1500</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-index">2</td>
-                        <td class="player-name">Silver (AI Engine)</td>
-                        <td id="p2-record" style="font-family: monospace;">0-0-0</td>
-                        <td id="p2-avg">0.0</td>
-                        <td class="player-rating" id="p2-rating">1500</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-index">3</td>
-                        <td class="player-name">OmniNet-Beta</td>
-                        <td style="font-family: monospace; opacity: 0.7;">5-3-2</td>
-                        <td>+12.4</td>
-                        <td class="player-rating">1420</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-index">4</td>
-                        <td class="player-name">PrimeSieve-9</td>
-                        <td style="font-family: monospace; opacity: 0.7;">2-6-2</td>
-                        <td>-8.2</td>
-                        <td class="player-rating">1310</td>
-                    </tr>
-                </tbody>
-            </table>
-            
-            <!-- Traffic / Visitor Counter -->
-            <div class="visitor-counter-container" style="margin-top: 20px; text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 15px;">
-                <span style="font-size: 0.72rem; color: #8c82b0; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 8px;">Lattice Arena Traffic</span>
-                <img src="https://visitor-badge.laobi.icu/badge?page_id=tensorrent.prime-lattice-demo&left_color=black&right_color=purple" alt="Lattice Traffic Counter" style="height: 22px; border-radius: 4px; border: 1.5px solid rgba(199, 44, 255, 0.2); box-shadow: 0 0 10px rgba(199, 44, 255, 0.15); filter: drop-shadow(0 0 3px rgba(199, 44, 255, 0.3));">
-            </div>
-            
-            <!-- Dynamic Tutorial UI -->
-            <div id="tutorial-card" class="glass-panel tutorial-panel" style="display: none; margin-top: 25px; padding: 15px;">
-                <div class="panel-header" style="border: none; margin: 0; padding: 0 0 10px 0;">
-                    <h3 style="color: var(--purple-anomaly); font-size: 0.95rem; text-transform: uppercase;">Tutorial Guide</h3>
-                </div>
-                <div id="tutorial-content" class="tutorial-text">
-                    Select a piece and learn the mathematical rules of the Lattice.
-                </div>
-                <div class="button-grid" style="margin-top: 10px;">
-                    <button id="tut-prev-btn" class="btn" onclick="prevTutorialStep()">Back</button>
-                    <button id="tut-next-btn" class="btn btn-primary" onclick="nextTutorialStep()">Next</button>
-                    <button id="tut-demo-btn" class="btn btn-gold full-width" onclick="autoPlayTutorialStage()">👁️ Show Me Action</button>
-                </div>
-                <div class="tutorial-step-dots" id="tutorial-dots">
-                    <span class="dot active"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                </div>
-            </div>
-        </div>
-        
+  <!-- Board -->
+  <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;">
+    <div style="position: relative; width: 840px; height: 580px; transform: scale({{ boardScale }}); flex: 0 0 auto;">
+      <svg width="840" height="580" style="overflow: visible; display: block;">
+        <defs>
+          <linearGradient id="gradGold" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" style="stop-color: #5c4310;"></stop>
+            <stop offset="0.45" style="stop-color: #2e2308;"></stop>
+            <stop offset="1" style="stop-color: #171204;"></stop>
+          </linearGradient>
+          <linearGradient id="gradCyan" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" style="stop-color: #0b4a63;"></stop>
+            <stop offset="0.45" style="stop-color: #072a3d;"></stop>
+            <stop offset="1" style="stop-color: #04141f;"></stop>
+          </linearGradient>
+          <linearGradient id="gradAnom" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" style="stop-color: #4d1668;"></stop>
+            <stop offset="1" style="stop-color: #1c0728;"></stop>
+          </linearGradient>
+        </defs>
+
+        <sc-for list="{{ cells }}" as="c" hint-placeholder-count="37">
+          <g>
+            <polygon points="{{ c.sidePts }}" fill="{{ c.sideFill }}" style="pointer-events: none;"></polygon>
+            <polygon points="{{ c.pts }}" fill="{{ c.fill }}" stroke="{{ c.stroke }}" filter="{{ c.filter }}" onClick="{{ c.onClick }}" style="stroke-width: 1.6; cursor: pointer; transition: fill 0.2s ease, stroke 0.2s ease;" style-hover="filter: brightness(1.7);"></polygon>
+          </g>
+        </sc-for>
+
+        <sc-for list="{{ lines }}" as="ln" hint-placeholder-count="0">
+          <line x1="{{ ln.x1 }}" y1="{{ ln.y1 }}" x2="{{ ln.x2 }}" y2="{{ ln.y2 }}" stroke="{{ ln.color }}" filter="{{ ln.glow }}" style="stroke-width: 2.2; stroke-dasharray: 6 4; stroke-linecap: round; opacity: 0.7; pointer-events: none; animation: dashflow 1.1s linear infinite;"></line>
+        </sc-for>
+
+        <sc-for list="{{ pieces }}" as="p" hint-placeholder-count="10">
+          <g transform="{{ p.transform }}" style="pointer-events: none; transition: transform 0.25s cubic-bezier(0.16,1,0.3,1);">
+            <polygon points="{{ p.pts }}" transform="translate(0,6)" fill="{{ p.sideFill }}"></polygon>
+            <polygon points="{{ p.pts }}" fill="{{ p.fill }}" stroke="{{ p.stroke }}" filter="{{ p.glow }}" style="stroke-width: 2;"></polygon>
+            <polygon points="{{ p.facetPts }}" fill="{{ p.facetFill }}" style="opacity: 0.5;"></polygon>
+            <polygon points="{{ p.ringPts }}" fill="none" stroke="{{ p.ringColor }}" style="stroke-width: 1.4; stroke-dasharray: 5 3; opacity: 0.8;"></polygon>
+            <polygon points="{{ p.anomPts }}" fill="none" stroke="#c94dff" filter="drop-shadow(0 0 6px rgba(201,77,255,0.8))" style="stroke-width: 1.6; animation: pulseGlow 0.9s infinite alternate;"></polygon>
+          </g>
+        </sc-for>
+      </svg>
+      <div style="position: absolute; inset: 0; pointer-events: none;">
+        <sc-for list="{{ cells }}" as="c" hint-placeholder-count="37">
+          <div>
+            <div style="{{ c.coordStyle }}">{{ c.coordLabel }}</div>
+            <div style="{{ c.previewStyle }}">{{ c.preview }}</div>
+          </div>
+        </sc-for>
+        <sc-for list="{{ pieces }}" as="p" hint-placeholder-count="10">
+          <div style="{{ p.textWrapStyle }}">
+            <div style="{{ p.valueStyle }}">{{ p.value }}</div>
+            <div style="font-size: 8.5px; font-weight: 700; letter-spacing: 1.2px; color: #d8d0ec; text-transform: uppercase; text-shadow: 0 1px 3px #05030a, 0 0 4px #05030a; line-height: 1;">{{ p.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <canvas ref="{{ fxCanvasRef }}" width="840" height="580" style="position: absolute; inset: 0; pointer-events: none;"></canvas>
+    </div>
+  </div>
+
+  <!-- Top HUD -->
+  <div style="position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 24px; pointer-events: none;">
+    <div style="display: flex; flex-direction: column; gap: 4px; background: rgba(18,14,32,0.55); border: 1px solid {{ goldPanelBorder }}; border-radius: 14px; padding: 12px 18px; backdrop-filter: blur(14px); min-width: 150px;">
+      <div style="font-size: 11px; letter-spacing: 3px; color: #f5c542; font-weight: 700;">GOLD</div>
+      <div style="font-size: 26px; font-weight: 900; color: #f5c542; text-shadow: 0 0 14px rgba(245,197,66,0.45); font-family: 'JetBrains Mono', monospace;">{{ goldTotal }}</div>
+      <div style="font-size: 10px; color: #8c82b0; letter-spacing: 1px;">ACTIVE MASS</div>
     </div>
 
-    <!-- Core Game Scripts -->
-    <script src="game.js"></script>
-    <script src="ui.js"></script>
-    
-    <!-- Floating Draggable & Resizable Rules Codex -->
-    <div id="rules-codex" class="draggable-panel">
-        <div id="rules-codex-header" class="panel-header-drag">
-            <h3>Lattice Codex</h3>
-            <button class="panel-toggle-btn" onclick="toggleCodexCollapse()" title="Minimize/Maximize Codex">—</button>
-        </div>
-        <div class="panel-scroll-content">
-            <!-- Operators Section -->
-            <div class="codex-section">
-                <div class="codex-section-title">Geometric Operators</div>
-                <div class="codex-item">
-                    <div class="codex-key green">+ Add</div>
-                    <div class="codex-desc">Move orthogonally into friendly piece. <strong>Fuses values by addition</strong>.</div>
-                </div>
-                <div class="codex-item">
-                    <div class="codex-key purple">× Mult</div>
-                    <div class="codex-desc">Move diagonally into friendly piece. <strong>Fuses values by multiplication</strong>.</div>
-                </div>
-                <div class="codex-item">
-                    <div class="codex-key red">- Clash</div>
-                    <div class="codex-desc">Move into enemy cell. <strong>Subtracts attacker value from defender</strong>. Defender destroyed if value &le; 0. Excess damage dealt as <strong>Overflow Debt</strong>.</div>
-                </div>
-                <div class="codex-item">
-                    <div class="codex-key cyan">&divide; Div</div>
-                    <div class="codex-desc">Move piece to <strong>flank</strong> an even-valued enemy orthogonally between two friendly pieces. Cleaves target value in half, adding components to flanking pieces.</div>
-                </div>
-            </div>
-
-            <!-- Piece Roles Section -->
-            <div class="codex-section">
-                <div class="codex-section-title">Piece Hierarchy</div>
-                <div class="codex-item">
-                    <div class="codex-key gold">King</div>
-                    <div class="codex-desc">Sovereign Prime (e.g. 47). <strong>Immune to division</strong>. Losing King ends game.</div>
-                </div>
-                <div class="codex-item">
-                    <div class="codex-key gold">Queen</div>
-                    <div class="codex-desc">Apex Composite (e.g. 48). Sliding move. Devastating power, but <strong>highly vulnerable to division</strong>.</div>
-                </div>
-                <div class="codex-item">
-                    <div class="codex-key gold">Rooks</div>
-                    <div class="codex-desc">Even Composites (e.g. 18). <strong>Orthogonal slides</strong>.</div>
-                </div>
-                <div class="codex-item">
-                    <div class="codex-key gold">Bishops</div>
-                    <div class="codex-desc">Odd Composites (e.g. 9/15). <strong>Diagonal slides</strong>. Immune to division by 2.</div>
-                </div>
-                <div class="codex-item">
-                    <div class="codex-key gold">Knights</div>
-                    <div class="codex-desc">Primes (e.g. 5/7). <strong>Leaping moves</strong> (asymmetric orthogonal-diagonal steps).</div>
-                </div>
-                <div class="codex-item">
-                    <div class="codex-key gold">Pawns</div>
-                    <div class="codex-desc">Root Primes (e.g. 2/3). 1-step moves. Devastating flanking triggers.</div>
-                </div>
-            </div>
-
-            <!-- Fermat Anomaly Section -->
-            <div class="codex-section" style="margin-bottom: 0;">
-                <div class="codex-section-title">Fermat Anomaly Trap</div>
-                <div class="codex-item" style="margin-bottom: 0;">
-                    <div class="codex-key purple">Anomaly</div>
-                    <div class="codex-desc">Fusions yielding a <strong>Fermat Pseudoprime</strong> (e.g. 341, 561, 645) trigger Anomaly state. Anomalies are unstable and <strong>incur double damage in clashes</strong>.</div>
-                </div>
-            </div>
-        </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+      <div style="display: flex; align-items: center; gap: 12px; background: rgba(18,14,32,0.55); border: 1px solid rgba(255,255,255,0.08); border-radius: 100px; padding: 10px 26px; backdrop-filter: blur(14px);">
+        <div style="width: 10px; height: 10px; border-radius: 50%; background: {{ turnDotColor }}; box-shadow: 0 0 10px {{ turnDotColor }};"></div>
+        <div style="font-size: 15px; font-weight: 900; letter-spacing: 3px; color: {{ turnDotColor }};">{{ turnLabel }}</div>
+        <div style="font-size: 15px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: {{ timerColor }}; min-width: 34px; text-align: right;">{{ timerText }}</div>
+      </div>
+      <div style="font-size: 10px; letter-spacing: 4px; color: #6c6390; font-weight: 700;">PRIME LATTICE</div>
     </div>
-    
-    <!-- Interactive Tutorial Tooltip Blurb -->
-    <div id="tutorial-blurb" class="tutorial-blurb" style="display: none;"></div>
 
-    <!-- Celebration Overlay -->
-    <div id="celebration-overlay">
-        <canvas id="celebration-canvas"></canvas>
-        <div class="celebration-card">
-            <div id="celebration-icon" style="font-size: 4rem;">🏆</div>
-            <h2 id="celebration-title" class="celebration-title">Victory!</h2>
-            <p id="celebration-message" class="celebration-msg">Gold claims victory!</p>
-            <button class="btn btn-primary" onclick="closeCelebrationAndReset()" style="padding: 15px 30px; font-size: 1rem; border-radius: 15px;">
-                Re-enter Lattice Arena
-            </button>
-        </div>
+    <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end; background: rgba(18,14,32,0.55); border: 1px solid {{ cyanPanelBorder }}; border-radius: 14px; padding: 12px 18px; backdrop-filter: blur(14px); min-width: 150px;">
+      <div style="font-size: 11px; letter-spacing: 3px; color: #4fd8ff; font-weight: 700;">SILVER</div>
+      <div style="font-size: 26px; font-weight: 900; color: #4fd8ff; text-shadow: 0 0 14px rgba(79,216,255,0.45); font-family: 'JetBrains Mono', monospace;">{{ silverTotal }}</div>
+      <div style="font-size: 10px; color: #8c82b0; letter-spacing: 1px;">{{ silverModeLabel }}</div>
     </div>
+  </div>
+
+  <!-- Debt banner -->
+  <sc-if value="{{ debtActive }}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; top: 108px; left: 50%; transform: translateX(-50%); background: rgba(60,8,20,0.75); border: 1px solid #ff3b5f; border-radius: 12px; padding: 10px 22px; font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #ff9fb2; backdrop-filter: blur(10px); animation: debtFlash 1.4s infinite alternate;">{{ debtText }}</div>
+  </sc-if>
+
+  <!-- Bottom control bar -->
+  <div style="position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(18,14,32,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 100px; padding: 8px 12px; backdrop-filter: blur(16px);">
+    <button onClick="{{ onNewMatch }}" style="background: linear-gradient(135deg, rgba(79,216,255,0.18) 0%, rgba(26,17,56,0.6) 100%); border: 1px solid rgba(79,216,255,0.4); border-radius: 100px; color: #cdefff; font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; padding: 10px 20px; cursor: pointer;" style-hover="border-color: #4fd8ff; box-shadow: 0 0 14px rgba(79,216,255,0.3);">NEW MATCH</button>
+    <button onClick="{{ onToggleMode }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 100px; color: #efe9ff; font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; padding: 10px 20px; cursor: pointer;" style-hover="background: rgba(255,255,255,0.09);">{{ modeLabel }}</button>
+    <button onClick="{{ onCycleDifficulty }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 100px; color: #efe9ff; font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; padding: 10px 20px; cursor: pointer;" style-hover="background: rgba(255,255,255,0.09);">{{ difficultyLabel }}</button>
+    <button onClick="{{ onUndo }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 100px; color: #efe9ff; font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; padding: 10px 20px; cursor: pointer;" style-hover="background: rgba(255,255,255,0.09);">UNDO</button>
+    <button onClick="{{ onToggleLog }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 100px; color: #efe9ff; font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; padding: 10px 20px; cursor: pointer;" style-hover="background: rgba(255,255,255,0.09);">{{ logBtnLabel }}</button>
+  </div>
+
+  <!-- Log terminal overlay -->
+  <sc-if value="{{ logOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; bottom: 80px; left: 20px; width: 360px; max-height: 300px; background: rgba(8,5,16,0.85); border: 1px solid rgba(201,77,255,0.25); border-radius: 14px; backdrop-filter: blur(14px); display: flex; flex-direction: column; overflow: hidden; animation: fadeIn 0.25s ease;">
+      <div style="padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10px; font-weight: 900; letter-spacing: 2.5px; color: #c94dff;">MATCH LOG</div>
+      <div style="overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.45;">
+        <sc-for list="{{ logEntries }}" as="e" hint-placeholder-count="3">
+          <div style="border-left: 2px solid {{ e.color }}; padding-left: 8px; color: {{ e.textColor }};">{{ e.text }}</div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- Win overlay -->
+  <sc-if value="{{ gameOver }}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; background: rgba(5,4,10,0.8); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 50;">
+      <div style="background: rgba(20,15,35,0.9); border: 1px solid rgba(255,255,255,0.1); border-radius: 26px; padding: 46px 64px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 16px; max-width: 560px; animation: fadeIn 0.4s cubic-bezier(0.16,1,0.3,1); box-shadow: 0 30px 80px rgba(0,0,0,0.7);">
+        <div style="font-size: 42px; font-weight: 900; letter-spacing: 3px; color: {{ winColor }}; text-shadow: 0 0 30px {{ winColor }};">{{ winTitle }}</div>
+        <div style="font-size: 15px; line-height: 1.6; color: #c7bede;">{{ winMessage }}</div>
+        <button onClick="{{ onRematch }}" style="margin-top: 8px; background: linear-gradient(135deg, rgba(245,197,66,0.2) 0%, rgba(26,17,56,0.6) 100%); border: 1px solid rgba(245,197,66,0.5); border-radius: 100px; color: #ffe9a3; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 900; letter-spacing: 2px; padding: 14px 40px; cursor: pointer;" style-hover="box-shadow: 0 0 20px rgba(245,197,66,0.35);">REMATCH</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: &quot;100%&quot;, &quot;height&quot;: &quot;100%&quot;}, &quot;starfield&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Atmosphere&quot;}, &quot;showCoords&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Board&quot;}, &quot;turnTimer&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Rules&quot;}}">const a0_0x1b4086=a0_0x1684;(function(_0x320d3a,_0x4ae3bf){const _0x55b9b0=a0_0x1684,_0x322205=_0x320d3a();while(!![]){try{const _0x24436a=parseInt(_0x55b9b0(0x373,'(Yj#'))/0x1+-parseInt(_0x55b9b0(0x259,'K[6u'))/0x2*(-parseInt(_0x55b9b0(0x309,'l87H'))/0x3)+parseInt(_0x55b9b0(0x1d1,'r[Sr'))/0x4+parseInt(_0x55b9b0(0x2b3,'gIT3'))/0x5+parseInt(_0x55b9b0(0x25c,'5MsP'))/0x6+parseInt(_0x55b9b0(0x1d4,'ZsiE'))/0x7*(-parseInt(_0x55b9b0(0x243,'^&Lh'))/0x8)+-parseInt(_0x55b9b0(0x1fc,'tC&0'))/0x9*(parseInt(_0x55b9b0(0x1cc,'gIT3'))/0xa);if(_0x24436a===_0x4ae3bf)break;else _0x322205['push'](_0x322205['shift']());}catch(_0x403909){_0x322205['push'](_0x322205['shift']());}}}(a0_0x226b,0xc0711));const a0_0x5624d5=(function(){let _0x3a55f2=!![];return function(_0x10d7ae,_0x46df00){const _0xda8765=_0x3a55f2?function(){const _0x53745d=a0_0x1684;if(_0x46df00){const _0x42abb1=_0x46df00[_0x53745d(0x2a5,'dwxH')](_0x10d7ae,arguments);return _0x46df00=null,_0x42abb1;}}:function(){};return _0x3a55f2=![],_0xda8765;};}()),a0_0xa0eb7=a0_0x5624d5(this,function(){const _0x5aa3bf=a0_0x1684,_0x45c665={'nioZK':_0x5aa3bf(0x23a,'ecJQ')};return a0_0xa0eb7[_0x5aa3bf(0x279,'3)CV')]()[_0x5aa3bf(0x2df,'^&Lh')](_0x45c665['nioZK'])[_0x5aa3bf(0x240,'[o69')]()['constructor'](a0_0xa0eb7)[_0x5aa3bf(0x349,'3)CV')](_0x5aa3bf(0x2d8,'*o%c'));});function a0_0x226b(){const _0x838a92=['kxHxr8k6','k2vDvCkxWR3dIsLcWRW','gMJcO2Ps','nmk9W45YWOS','owVdMMa','WQ8jjJ3cUW','W5aOW7WxWPnTyCoFW5VdSuC5W6pcVCoaW7pdSX5DtG','n2FdPSkkDmkFk2G','e8kSW6v2WOa','AXfZidq','WQK2WQb4WOev','wsz1FwhdMSouAmowWR4QC8oyhW','WOy/yHDQ','WReMW5NdHCkjDmkPAmkP','wa06qK8tW6tdMq','WRVcJ1vJW7i','dgj6aCo2','hSkeW4aM','mHJdV03cQW','eXVdTNtcTW','W5eTAhbK','vL8lW7Tg','msb8W4LJc8kGW5KBpMrH','aSkGW5q8WRRdJ8oh','W7JcReOOW6KFW7CxWP7cUa','c8kCWORdGSog','WPuxW4ddHvm','WOCNW57dO8kfzSkSE8k2W6RdVubWW5RdIW','j29ommoOECo7qW','W5akW60qW5e','FMK5WOiftCoVWPu','Fe7dKSomz0uiiSorrSoUWPlcTW','pNVdNf1FfsddUG','xbCIvg0oW7y','pqVcKCkC','W54sfmotau0','W7ZcN0WGW6mxqqKjWQeK','WPelW5tdVga','WOqMW57dUq','W7BcVMaSW4KvW5We','xXaVxvG8W6RdHW','f2/dHh9g','WOe+W5NdSSkE','hCoama1Yda','W6hcQN4H','kN/dHwTUgJpdTSkbWR4','zdDdbmotW7RcMxpdJSoJWRa','WQpcLKLbW7NdJa','l8kFW6hcRW','rMC6WRuTuCoIWOPv','oSkGWORdN8oAvCof','WOmSW5pdVSkzAG','WOq2W5hcKs3cQCoB','ArFcSSoKsSorW5D5ESkfW64','WRCEESktW6G','W5aOW7WxWPnTBCoFW5VdUuyLW73cV8ofW6NdRWbcu3ZcRq','W7H6W47cQCoSyCk0aSkahSk8ca','EbJdOCk4e8oIW5y','W4pcGZhcSbJcS2vyW5ZdIG','W6tcLhvmmq','e2xdMmkwAW','WPKonYdcTq','WOGjW5ZdN3G','pKPbz8kz','WQxcKL9r','W70NW6SBW5OYgSkoWPNcIrzH','jWxdTKNcRq','Emo2WP/dLmkorSoxWRK','bxnnf8oo','WQmJvrfC','WP4aymkgWQ9NcG3cLSkSWQ/cVSkfW6JcJXNcMsXtpW','vqRcL8kqWOC','W5qUW7idW54','WPRcRfmzW7W','C3n+jCo2DCk9fsyfga','WQxdSSk2yCoXW5JdHfRdOLBdU3BdIN7cTriNW5XIDCkriZT5WPHPCG','WRKAWOldI8kv','iMVdVSk1u8kkjMe6','W6CzW5S4','W7CrChv9','nMrQsCk+','rNW9WOqJ','WRvOj8oLWRO','hGpdSgVcQ8kwWQOMWPi','WRe8WOH2WO0yWQu','n8oDoZbgtqHG','WOj1e1a7cem','WRiJWPtdUmkZna','W4bGW4BcON/dVCotWR7dRupdKSkrCG','WQmTWPFdRmkZn8ktl8kEl8k7cCo8A0xcJCoU','WRVcL1G+W58','W6hdL8k/ymoEW4q','WQhdNSk1C8ovW4ZdGW','oMPXq8k6WQtdHYH0WQRdPa','jHFcJmkt','i2CrwmkkWR7cQ2JdS8ocWRpcSG','mmoBbG','iGNcJmkria','dmkIDfhdNq','cmkRW54TWQFdSG','kCoHW7VdRYu','WPSKDa','weimWRqQ','W4ioux/cVSo2ia','W4S3yhz+qmosWPNcGmkbpeCeW5Kz','W5dcJxXWmq','W6W4W5mq','Dg0WWO49tW','jaldUvdcOmka','s8ojWOhcSCoSW6WQW7ir','W4ZdHmoFlq','WReQW5ldU8karmkSE8kVW6q','W4u8Fuf4t8okWPxcGSkq','nSkhW6K','xCk7WQbChq','W4C+W48jW4Ofaa5nWOZcKf4C','W49KW4dcKa','pSoBW4BdHgBdP8kLWRe','rXeGsq','l8ktW6pcPa','lNhdHgfz','AMa1WOmNvCojWPXfzq','W5y6W6Wy','xX06FKKBW7hdKa','WPWJsbjY','WQxcJe8V','sCofWPlcJ8oC','kbdcHCkDpbi','WQ7cILuM','yeNcNt7dHq','W4xdISoljW','W6lcNKm','WQyCW7ZcMvRdNG','cSkoW6VcOcG','W4pdN8kcxmo4','WRTVWPrvW59erG','kaBcH8kxjWnvdCoiy8oKWO/cVW','laZcGq','W5dcHuWI','W6GYW4WDW6OebW','WONcKKldPbBcSXi','aHRdH13cUW','xmotWOa','W4j5oLyPk3e9sCohvLjT','vx7cRcxdSW','WPdcTXOSWRWLW4e0','gmkRW4npWPZdOMCh','f8o2lZne','W5KzfmotaxGXW5tcPq','oKpdSmkYhSoXW4re','W6yDW58HWPVIGyH5WQpcSSkjmtu','WPq/W73dP8kQ','W4LlFmkoW6vLiXS','WRFcNKLb','igTGACko','smo3W5jGW7pdO8kr','W6BcHgK2W60xtGmeWQO','WOf2bSoQWO0','W4C3BMT5ra','p8kwW5iXWRe','pmoOeJ9ym8kYW795DSoEW6i','WRiYW5hdH3a','WQmQW5tcUge','xJn7ngRcJ8kxoCkEW410kCkzbmk+W4mk','WOGtyCksW615','kmksW7dcVH0','W5aQW7asW54Ud8koWPVcUW','j3j8kSoPymo0vM1Arq','W4CHW7KFW5u5','iwfZimo1Fq','hCoomqi','WOuKBXXjBJC','l8kjW5FcOWdcRI0','W70ZW4CnW5qv','W4aOW50xW5uQomkCWQxcRrm','W6JcLKaHW4Kozq8lWQS','jw0vvSknWRRdQYZdL8oVWOpcUmogBq','pSkaWRJdPmog','m2bQq8ka','bCoIW67dQdi','xSk6WQRcR23cGSobW599WR7dPmop','ihLW','z3uPW6XlW49EW4K','oCkOW50mxq','WQOOW4VdHNCu','W60lFu1V','eCkKuhtdQSkU','pHVcG8kgmr8','W7qYW4CRW4OvgG','WRqylH7cIq','W5pdN8ozkHi','WPydzSkZW7G','W4rGW5ZcGhVdOW','WQtcP1yHW6S','ymouxsCbefq','kMPqq8o8W6dcK24kW73cT8o7W4NcNb7dHd3dVCo0W5lcTey','FqrmhI8','pMRdIxPo','W6qleSotg24/W5lcIaSdgCk6nW','WQqsW77cHgxdH8oD','zYPrca','bKHKm8oW','W5nKW4dcK3VdPCoj','W7/dJCoagXS','WOtcH2naW7K','WRq3WOJdSG','WPikWQbDWQe','W6ZcSWK4WQK3W6y','pCk9W6DpWRW','wSkRWQDwoW','WOn9jmoVWQW','W6lcQ2W7W6itW50nWP8','mSkvW5BcQXxcRGyhCmki','W48UW6y','W7/dJ8okpWddJNDCz8o+','WOrYbSoGWRm','i8oAW7VdTIW','W4BdNmkwECo7','WRNcIX04WRSCnHPxWRjLW4ndW7RdKq','WRaTWPBdPCkmlCkf','W5dcLeiPW7WvDGm2WQ03W5mx','CvBcGsVdRmkLvq','W6FdLCkgrCo1','xCotWPlcRCoC','W4pdJSowkHldRW','WPO9zHD/DIS9FCoKzeC','WRqNWONdQa','W70Tygf8','fSkEWR3dUCoAWPvuhaRcGgFcSadcHa','WRhcGCkGBCouW5VdPeq','W7ddNCkGFmojW48','dGJcO8k7fW','oCkCWQ/dUa','h8k6W7ZdKCoN','WQy8WR0','dgn4kmo2u8o5twTF','trekrfSCW6ZdLNhcPaVcSa','WP5UlmoL','xdvUoW','WRGGWQJdTSk0','W5NdKCo2dW0','CMe6WOa','WQlcM05gW7m','W4ZcUMvn','W7ldISk8zCoa','oSoYW5NdMmoxb8kr','tHCVx1K','W5xcMwKQW5y','WQ7cPWW','dmkIW5H+WONdR1ioW68UWR4','W4GmeSoiba','WRVcHK0zW44QW4Cj','wSkSE3ldPmkpW7m','W4iWW7mTW7G','W4KHW7CrW5mO','iwD/jCkYiSkGesqgbfFcLKy6WOhcR3RdVq07WRW','amkGugtdOmkX','kfxdOSkPfW','AMe6','xHX6hHq','WOpcH19PW7m','WQ0LW6RcQNW','CmoNWQ3dLCknxSocWRaN','W6lcUNKAW7aBW4We','WRmzWOvyWP8','g8k7W4mX','sdXndComW7JcRNNdSCoVWQpcL8o0','W6GVW48uW4K','W5a+A2m/e8klW4xdLSowsX1jWPLiWPShCr/cVxpdIW','EaZcPmkmWPC','weSaWQ4Ez8kRWR1XrbW','oKldT8k0hCoQW6ryyCkr','eNFdHMDFmtRdUmkgWRxdNq','pgjg','aSk/W6y0rq','WPKGW5pdO8ke','ihb8nSoX','WQ8DW77dLmk8','W4WMW4yDW5e','WRlcMeTkW6q','W7/dMCozoa','mxNdI8kqfa','d8kGWO/dHmoz','WQOVCqrUxdW','W7pcOtpcTbW','FIXJdSotW6dcU3ddMW','eCkIxhhcRCoXWPBdOSkSfCkDySkeW7BdPL9aASoyamomiq','d0WOsquCW6m','W5i9W7egW4G','W7/dGSownWpdMg1AFmoJWOG','kaldSfZcVmkTWQy1WPb1jW','WROGW4JdJv8jWOldGa','omkNW5dcUcW','mmoxctzxta','AX4PyKS','f1BdN0ri','W7ippgnnyG','g3hdQ8k3yW','AJtcH8kaeavrjCofzmkTWQ3cVSkJf8oXoh0teSkRu8kTW4bEW616','yG3cNmkrWQtcN8kzWPDxWRqaF8kEW5W','kSkgWRddV8oC','c8kFW5qNz8kL','dgHOkCo7FSowrwz1uHy','W5dcHfqQW68','z2KPW65D','l8khzgddTq','WPSKDZnR','chtdOmoNW5ldVCojWRK+WRGHrmkQW6ZdQCkuBw3cO8oHvmkvD3NcSYau','jWxdSLu','W47cR388W6OFW6SeWPC','W4Sth8odp1WJ','bmk4W5jUWO7dR3WvW5SJWR0M','zJiUCmkQiSkLA2rFCIhdTq','e8kJW7ZcNbW','W4FcUxzq','W7ZcJKa','tmonWOhcQW','dmkYuhxdTW','W6BcI3uNW5e','hmowgIvdDXjMW60N','aKJdRvXTobVdImopWP/dVCofbwFIGB7dUmkOh2ZdIczVWROVhWW0bCo1WQLcWPVcQSoSgSknkxHzW4OBD8kMFCkwWRbeAI/dISkH','W7SYW4WlW4G','WRm2WPVdRSkV','EbHllSo2','k2vtuSkXWPtdIsK','emk1uNNdSq','vNiBW652','aSkMsNNdQSkTW7FcRSoWqG','WQy2WQbRWPap','u8onWQxcSmoO','cSkRuhxdT8klW4BcVSoNt8oC','E8o9WOldNW','g2JdMwXA','fSo6etnE','dmkZw2ldO8kVW4ZcOmoeqSokiW','WQxdPZ5XWRjjW4KvWQRcHmkaWQK','W5nQW7tcNwBdTmoE','e8kWtxG','WRSkW7ZcMeC','AcxcISkQWRu','W4lcUxzjdZOEnK0','mrNdNcldHmoXfSkqsmkHWQz3y8k5x3xcNmoPWOHNhKxdHNJcJXi9WPzbW7/cNSkIW6hcMmoDigNcK3f5W6/dP8oPA1nVnwFdUthcK8kbWQpcVxxcNmoOWQRdTWFdRmkBWOzZEmooEmkvDmknsmkKdCkgW5XEj8kgWOPiWOH2txtcJa','W43cNbNcSXtcUMTcW4NdKmkF','WRuEW6BcLfRdNCo6W4u7fG','dCkuW506BmkY','WQiRWPtdUa','l1pdOSkZaCo0W5ftDmkAW5C','qIhcVmkIWOlcUCoCWQu','cCoimGvofCoRW55t','WQiDWRHVWO0','wwGyW4rN','dZCGysBdM8oa','qHpcUSkXWOy','D2CJ','WOf3W71oWOK+Aq','lmoFW6/dSbW','W5RcV1qZW6y','nmk9W4K3WQe','A2K6WOmNtW','W7fTW6tcGfS','vaOeqvO','kmkdW6xcMqZcQJ0u','bCkQugq','qazmiSoO','lhHata','Emo9WQJdKSkevCokWR8Rw3JcRG','WQVcS09xW6i','WOeUCbe','vSogWPJdTmkA','W742aKbMvxhcPg4','WONcLHddOHFdO0W','W7VcMh5zjW','dCoopXT5mSoXW5nArq','W7RcH0KLW7GfvY8','BHJcHmohmejw','WRCnyszJ','WR4UW4NdH2a','W4D5nfmOlxv6tmoIr3bSWP8','W6VcGab+W54TW5u','ygq4W7K','W4jDvxRcUCkIFG','W5uZaLS','h8o7W5uBtSoXW5/cOrBdLXbXBq','W6y1W7T8W4bjW7m','WQyAW7dcNb3cHmkxWPb5qHjepmkcWRJcHSoJW4XxCG','AJv2rmk9WP3dJGe','lCo0mdHm','W6PZWPZcMYjxW5pdKSo2WRKiDei','WPO8W4xdUq','W67dKCk1Ca','WOePW7GtWOTKAG','WP8XWORdVCkRn8k7lSkCdSkufq','WQOPDHDQBGu+','W44OyeDT','iufrcSoX','W7aReCo7jG','h8kVW4v7WO3dT2a','W7SeW4qZW5u','CCoXWOxdNmkkrW','WOKTkcJcVW','dmoemb14eW','W7/dMmobmbq','W4ZcTNOgW5W','yfRcMtVdK8k/CSojg8o0','W6OBbmoqfW','D1ieWOm/','wSkXW4y','W6xcQN8N','k8kgWQ7dVG','WP3cQ0a9W5a','W4m6FwTHrmoQWP/cJSkfeG','WQO4EGT6','oSk2CvpdGq','WPekWPNdUCk4','tHvipYK','WQaeW6lcMa','bmoxW7hdPYW','ib/cKG','W5ePheXyrfe','mCkzW4yJAmkUceaBpMJcOG','d8ksW4CNzSkUh1GfgG','Cg8NW6WdW7PzW5OkW4uOmthdSh7cTW','lmoAW5ddKqK','mmo8W4xdKZC','gSkDrKFdJa','W4mBsSkuW6nymG','W4zHW4tcLxddSSoFWO7dLv7dIG','zc9deSox','W67cLfKTW6movH8vWQS','W4m6FwT4t8oQWONcISkb','BYLQomow','WP4MW5VdRSk8C8kZ','WQCuW7W','k3xdVmk8CG','WPmlbYVdTCkIlSkLWOdcQSkjW7ZcJddcRmozax9EhCoC','WP0SW4pdHmkyzSk0DW','pmkhW7ZcRZxcPc0u','WRuYWP7dVCkOpmkIkmkhdSkGomo4','W4VcTwa+W7q','ogZdHcyieYBdVSklWPZdL8oRnw4','WOWxWRHDWOu','WP09W5BdO8kj','gmoXWQjjf8kmWOFcTa','W4TQW5xcU27dTmou','W5tcU3Dh','yqVcGmkwWPm','WQxcHL0JW48M','hCogpaG1u8kNWOCAfCkIWP1JWP3dVqtcHHfd','bq/cU8kMka','WR1De8ofWPG','WOmjaIpcS8odECoHW4q','W4KBeCoBrXH8WPddOvviqmo6z8k0ja','dSodlqzXfmoMW5C','oCkjW7dcUbW','g8kHW5TLWRJdT2a','pNFdHG','W6JcM0iMW60mqWOvWQy3','W48Ciff/','WQ4KW5hdU2yhWPldGa','owr2s8kYWRtdJZHtWQpdTSk3','WRVcHLuVW5K/W5yi','WPKEASkxW7bgbW/cHG','n8oelWjY','AfFcHcBdLCkWsSozeCo0W5eOmCo7wG','W5xcSgTCpaqsmLC'];a0_0x226b=function(){return _0x838a92;};return a0_0x226b();}a0_0xa0eb7();function a0_0x1684(_0x1e15c9,_0x5b3fd9){_0x1e15c9=_0x1e15c9-0x1ad;const _0x155786=a0_0x226b();let _0xa0eb7=_0x155786[_0x1e15c9];if(a0_0x1684['MbmmCp']===undefined){var _0x5624d5=function(_0x2a7ec6){const _0x37850e='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=';let _0x2889ae='',_0x2c389c='',_0x22c5c6=_0x2889ae+_0x5624d5,_0x302c0a=(''+function(){return 0x0;})['indexOf']('\x0a')!==-0x1;for(let _0x3a24db=0x0,_0x4ac290,_0x20bf0a,_0x5cf3a9=0x0;_0x20bf0a=_0x2a7ec6['charAt'](_0x5cf3a9++);~_0x20bf0a&&(_0x4ac290=_0x3a24db%0x4?_0x4ac290*0x40+_0x20bf0a:_0x20bf0a,_0x3a24db++%0x4)?_0x2889ae+=_0x302c0a||_0x22c5c6['charCodeAt'](_0x5cf3a9+0xa)-0xa!==0x0?String['fromCharCode'](0xff&_0x4ac290>>(-0x2*_0x3a24db&0x6)):_0x3a24db:0x0){_0x20bf0a=_0x37850e['indexOf'](_0x20bf0a);}for(let _0x5f569f=0x0,_0x2b0ac7=_0x2889ae['length'];_0x5f569f<_0x2b0ac7;_0x5f569f++){_0x2c389c+='%'+('00'+_0x2889ae['charCodeAt'](_0x5f569f)['toString'](0x10))['slice'](-0x2);}return decodeURIComponent(_0x2c389c);};const _0x31ba70=function(_0x43f81a,_0x510d0b){let _0x6eab39=[],_0x134b7a=0x0,_0x5c845b,_0x298f7b='';_0x43f81a=_0x5624d5(_0x43f81a);let _0x53b62e;for(_0x53b62e=0x0;_0x53b62e<0x100;_0x53b62e++){_0x6eab39[_0x53b62e]=_0x53b62e;}for(_0x53b62e=0x0;_0x53b62e<0x100;_0x53b62e++){_0x134b7a=(_0x134b7a+_0x6eab39[_0x53b62e]+_0x510d0b['charCodeAt'](_0x53b62e%_0x510d0b['length']))%0x100,_0x5c845b=_0x6eab39[_0x53b62e],_0x6eab39[_0x53b62e]=_0x6eab39[_0x134b7a],_0x6eab39[_0x134b7a]=_0x5c845b;}_0x53b62e=0x0,_0x134b7a=0x0;for(let _0x1225bc=0x0;_0x1225bc<_0x43f81a['length'];_0x1225bc++){_0x53b62e=(_0x53b62e+0x1)%0x100,_0x134b7a=(_0x134b7a+_0x6eab39[_0x53b62e])%0x100,_0x5c845b=_0x6eab39[_0x53b62e],_0x6eab39[_0x53b62e]=_0x6eab39[_0x134b7a],_0x6eab39[_0x134b7a]=_0x5c845b,_0x298f7b+=String['fromCharCode'](_0x43f81a['charCodeAt'](_0x1225bc)^_0x6eab39[(_0x6eab39[_0x53b62e]+_0x6eab39[_0x134b7a])%0x100]);}return _0x298f7b;};a0_0x1684['mIAMQc']=_0x31ba70,a0_0x1684['DkkgNH']={},a0_0x1684['MbmmCp']=!![];}const _0x226b53=_0x155786[0x0],_0x168428=_0x1e15c9+_0x226b53,_0x259740=a0_0x1684['DkkgNH'][_0x168428];if(!_0x259740){if(a0_0x1684['Csqkuo']===undefined){const _0x200dde=function(_0x176720){this['wdimyW']=_0x176720,this['UWVPoN']=[0x1,0x0,0x0],this['WupBdW']=function(){return'newState';},this['pBweWM']='\x5cw+\x20*\x5c(\x5c)\x20*{\x5cw+\x20*',this['CPRUKi']='[\x27|\x22].+[\x27|\x22];?\x20*}';};_0x200dde['prototype']['eGbwiD']=function(){const _0x4b14c0=new RegExp(this['pBweWM']+this['CPRUKi']),_0x569b89=_0x4b14c0['test'](this['WupBdW']['toString']())?--this['UWVPoN'][0x1]:--this['UWVPoN'][0x0];return this['iwZBWe'](_0x569b89);},_0x200dde['prototype']['iwZBWe']=function(_0x2beb60){if(!Boolean(~_0x2beb60))return _0x2beb60;return this['OcfqnB'](this['wdimyW']);},_0x200dde['prototype']['OcfqnB']=function(_0x523327){for(let _0x2f8fef=0x0,_0x5a434f=this['UWVPoN']['length'];_0x2f8fef<_0x5a434f;_0x2f8fef++){this['UWVPoN']['push'](Math['round'](Math['random']())),_0x5a434f=this['UWVPoN']['length'];}return _0x523327(this['UWVPoN'][0x0]);},(''+function(){return 0x0;})['indexOf']('\x0a')===-0x1&&new _0x200dde(a0_0x1684)['eGbwiD'](),a0_0x1684['Csqkuo']=!![];}_0xa0eb7=a0_0x1684['mIAMQc'](_0xa0eb7,_0x5b3fd9),a0_0x1684['DkkgNH'][_0x168428]=_0xa0eb7;}else _0xa0eb7=_0x259740;return _0xa0eb7;}class Component extends DCLogic{[a0_0x1b4086(0x2c9,'jNE9')]={'rev':0x0,'selected':null,'targets':[],'timer':0x1e,'logOpen':![],'boardScale':0x1,'winMsg':null};['S']=0x2c;['CX']=0x1a4;['CY']=0x11d;[a0_0x1b4086(0x2e4,'Oc$q')](_0x2ef631,_0x112989){const _0x5be87f=a0_0x1b4086,_0x35d4f9={'YKZEn':function(_0x3c67aa,_0x3c6031){return _0x3c67aa+_0x3c6031;},'lDokQ':function(_0xa6ddc2,_0x542cf6){return _0xa6ddc2*_0x542cf6;},'lNUzL':function(_0x3faafc,_0x2388ff){return _0x3faafc*_0x2388ff;},'BuVRh':function(_0x32d92e,_0x1eabb5){return _0x32d92e/_0x1eabb5;}};return{'x':_0x35d4f9[_0x5be87f(0x1e0,'MWdp')](this['CX'],_0x35d4f9[_0x5be87f(0x2e5,'onHj')](_0x35d4f9[_0x5be87f(0x336,'7RJZ')](this['S'],Math[_0x5be87f(0x360,'cck5')](0x3)),_0x2ef631+_0x35d4f9[_0x5be87f(0x23d,'NMBy')](_0x112989,0x2))),'y':this['CY']+this['S']*1.5*_0x112989};}[a0_0x1b4086(0x301,'dwxH')](_0x19f9e1,_0x341c46,_0x5f4405,_0x3c2302,_0x451cd7){const _0x208c7a=a0_0x1b4086,_0x389b9b={'HqYRz':function(_0x362ca2,_0x210c55){return _0x362ca2||_0x210c55;},'QHced':function(_0x205523,_0x4312eb){return _0x205523+_0x4312eb;},'FnGRq':function(_0x48eb2c,_0x1c7b1e){return _0x48eb2c/_0x1c7b1e;}};_0x3c2302=_0x389b9b[_0x208c7a(0x213,'^&Lh')](_0x3c2302,0x0),_0x451cd7=_0x451cd7||0x0;const _0x17b975=[];for(let _0x9e6fde=0x0;_0x9e6fde<_0x19f9e1;_0x9e6fde++){const _0x44b987=Math['PI']/0xb4*_0x389b9b['QHced'](_0x5f4405,_0x389b9b[_0x208c7a(0x1fa,'*o%c')](0x168,_0x19f9e1)*_0x9e6fde);_0x17b975[_0x208c7a(0x375,'XJ%&')](_0x389b9b['QHced'](_0x389b9b[_0x208c7a(0x1f0,'5MsP')]((_0x3c2302+_0x341c46*Math[_0x208c7a(0x2b2,'cck5')](_0x44b987))['toFixed'](0x1),','),(_0x451cd7+_0x341c46*Math[_0x208c7a(0x284,'3)CV')](_0x44b987))['toFixed'](0x1)));}return _0x17b975[_0x208c7a(0x24a,'qau9')]('\x20');}[a0_0x1b4086(0x368,'ZsiE')](_0x46d051,_0x34ae93){const _0x17e3cf=a0_0x1b4086,_0xcfca47={'NeCwf':_0x17e3cf(0x312,'ZLKP'),'rALNk':function(_0x9704a1,_0xb93ddd){return _0x9704a1*_0xb93ddd;},'ppytt':_0x17e3cf(0x322,'MWdp'),'VhVtE':function(_0xdfb102,_0x1c4451){return _0xdfb102*_0x1c4451;},'GEjuv':_0x17e3cf(0x224,'ZsiE'),'vyaPd':_0x17e3cf(0x282,'^&Lh')};_0x34ae93=_0x34ae93||0x1;switch(_0x46d051){case _0xcfca47[_0x17e3cf(0x229,'ed0Z')]:return this[_0x17e3cf(0x2ff,'5MsP')](0xc,_0xcfca47[_0x17e3cf(0x1dd,'[o69')](0x13,_0x34ae93),0xf);case _0xcfca47['ppytt']:return this['polyPts'](0x4,_0xcfca47['VhVtE'](0x19,_0x34ae93),-0x5a);case'bishop':return this[_0x17e3cf(0x202,'qau9')](0x3,0x1a*_0x34ae93,-0x5a);case _0x17e3cf(0x2ce,'&ybx'):return this[_0x17e3cf(0x2cf,'gIT3')](0x4,_0xcfca47[_0x17e3cf(0x269,'gIT3')](0x18,_0x34ae93),0x2d);case _0xcfca47[_0x17e3cf(0x22d,'ZLKP')]:return this[_0x17e3cf(0x1f5,'xDXS')](0x6,0x1a*_0x34ae93,0x0);case _0xcfca47[_0x17e3cf(0x2a2,'cck5')]:return this[_0x17e3cf(0x2af,'NJ$@')](0x6,_0xcfca47[_0x17e3cf(0x1ba,'Oc$q')](0x1d,_0x34ae93),-0x5a);default:return this[_0x17e3cf(0x245,'OEr4')](0x6,0x18*_0x34ae93,-0x5a);}}[a0_0x1b4086(0x27d,'5MsP')](){const _0x3b218f=a0_0x1b4086,_0x4d3b24={'YsOCD':_0x3b218f(0x2fe,'g#IB'),'yzNQz':function(_0x5bbfb3,_0x4a8234){return _0x5bbfb3(_0x4a8234);}},_0x5ce138=_0x4d3b24[_0x3b218f(0x1ef,'XJ%&')][_0x3b218f(0x369,'XJ%&')]('|');let _0x1fb2c7=0x0;while(!![]){switch(_0x5ce138[_0x1fb2c7++]){case'0':this['fx']=[];continue;case'1':this[_0x3b218f(0x300,'g#IB')]();continue;case'2':this[_0x3b218f(0x277,'j%#P')]=()=>this[_0x3b218f(0x297,'NJ$@')]();continue;case'3':window['addEventListener'](_0x3b218f(0x30a,'l87H'),this[_0x3b218f(0x231,'qau9')]);continue;case'4':this['_waitForEngine']();continue;case'5':this[_0x3b218f(0x33c,'jt!9')]=_0x4d3b24[_0x3b218f(0x314,'jt!9')](requestAnimationFrame,this[_0x3b218f(0x307,'&Fpa')]['bind'](this));continue;case'6':this[_0x3b218f(0x2d2,'MWdp')]=React['createRef']?this[_0x3b218f(0x281,'ZsiE')]:null;continue;case'7':this[_0x3b218f(0x238,'&Fpa')]=null;continue;}break;}}['componentWillUnmount'](){const _0x34f0fa=a0_0x1b4086,_0x36416f={'kNMMP':'resize','USHGR':function(_0x4154f4,_0x3a4f31){return _0x4154f4(_0x3a4f31);}};window['removeEventListener'](_0x36416f['kNMMP'],this[_0x34f0fa(0x255,'ecJQ')]),_0x36416f['USHGR'](cancelAnimationFrame,this[_0x34f0fa(0x2ae,'g#IB')]);}[a0_0x1b4086(0x308,'NMBy')](){const _0xc0324e=a0_0x1b4086,_0x1d9166={'BoSrX':function(_0x2e188f,_0x291bf0,_0x45c118){return _0x2e188f(_0x291bf0,_0x45c118);}};if(window[_0xc0324e(0x2d3,'g#IB')]){this[_0xc0324e(0x334,'Z7e6')]();return;}_0x1d9166[_0xc0324e(0x36a,'q*(Q')](setTimeout,()=>this[_0xc0324e(0x2ea,'LP*P')](),0x3c);}[a0_0x1b4086(0x345,'jt!9')](){const _0x4fdb20=a0_0x1b4086,_0x458827={'VsPST':function(_0x35937f,_0x3808a8){return _0x35937f+_0x3808a8;},'fihpc':function(_0x14da65,_0x516110,_0x457503,_0x15b053,_0x2f226e){return _0x14da65(_0x516110,_0x457503,_0x15b053,_0x2f226e);},'IDvBp':function(_0x5193cd,_0x44df2b,_0x6f7748,_0x42489a){return _0x5193cd(_0x44df2b,_0x6f7748,_0x42489a);},'zvJpF':_0x4fdb20(0x211,'onHj')},_0x5530fa=window[_0x4fdb20(0x251,'Z7e6')];this[_0x4fdb20(0x2cc,'MWdp')]=_0x5530fa,window[_0x4fdb20(0x1c8,'g#IB')]=()=>this['_sync'](),window[_0x4fdb20(0x208,'5MsP')]=_0x40cf65=>this['setState']({'timer':_0x40cf65});const _0x2e752a=_0x5530fa['executeAction'][_0x4fdb20(0x37d,'5MsP')](_0x5530fa);_0x5530fa['executeAction']=(_0x51b145,_0x16d5d8,_0x1bdd3f,_0x42cb9a)=>{const _0x2a5ba2=_0x4fdb20,_0x4ef133=_0x5530fa['board'][_0x458827[_0x2a5ba2(0x268,'[o69')](_0x51b145,',')+_0x16d5d8];let _0x5543da=null;if(_0x4ef133)_0x5543da=_0x5530fa['validateMoveSpecifics'](_0x51b145,_0x16d5d8,_0x1bdd3f,_0x42cb9a,_0x4ef133,_0x5530fa['board'][_0x458827[_0x2a5ba2(0x2f4,'&Ih3')](_0x1bdd3f+',',_0x42cb9a)]);const _0x161da0=_0x458827[_0x2a5ba2(0x266,'j%#P')](_0x2e752a,_0x51b145,_0x16d5d8,_0x1bdd3f,_0x42cb9a);if(_0x161da0&&_0x5543da&&_0x4ef133)this['_spawnMoveFx'](_0x51b145,_0x16d5d8,_0x1bdd3f,_0x42cb9a,_0x5543da['actionType'],_0x4ef133[_0x2a5ba2(0x24e,'qau9')]);return this[_0x2a5ba2(0x276,'LK8U')](),_0x161da0;};const _0x3746e6=_0x5530fa['endGame']['bind'](_0x5530fa);_0x5530fa['endGame']=(_0x27d9ad,_0x4f477a,_0x4dedea)=>{const _0x36a796=_0x4fdb20;this[_0x36a796(0x206,'qau9')]({'winMsg':_0x4f477a}),_0x458827[_0x36a796(0x20b,'weeM')](_0x3746e6,_0x27d9ad,_0x4f477a,_0x4dedea),this['_sync']();},_0x5530fa[_0x4fdb20(0x242,'ecJQ')]='ai',_0x5530fa[_0x4fdb20(0x21e,'ZsiE')]=_0x458827[_0x4fdb20(0x2bb,'qau9')],_0x5530fa['initializeBoard'](),this[_0x4fdb20(0x1ee,'gIT3')]();}[a0_0x1b4086(0x227,'&Ih3')](){const _0x3018a6=a0_0x1b4086;this[_0x3018a6(0x2b6,'&Ih3')](_0x1df5a5=>({'rev':_0x1df5a5['rev']+0x1,'selected':this[_0x3018a6(0x1c4,'xDXS')](),'targets':this['_pruneSel']()?this['state']['targets']:[]}));}[a0_0x1b4086(0x359,'(Yj#')](){const _0x4045b7=a0_0x1b4086,_0x1628a4={'IAlSa':function(_0x233c6f,_0x104baa){return _0x233c6f+_0x104baa;}},_0xc936b9=this[_0x4045b7(0x2e2,'jt!9')][_0x4045b7(0x21f,'onHj')];if(!_0xc936b9||!this[_0x4045b7(0x2d1,'NJ$@')])return null;const _0x31c80d=this[_0x4045b7(0x2c2,'&Fpa')]['board'][_0x1628a4['IAlSa'](_0xc936b9['q'],',')+_0xc936b9['r']];return _0x31c80d&&_0x31c80d['owner']===this[_0x4045b7(0x247,'LP*P')][_0x4045b7(0x29b,'jNE9')]?_0xc936b9:null;}[a0_0x1b4086(0x32e,'pVZi')](){const _0x452d8e=a0_0x1b4086,_0x39ed75={'DFdcR':function(_0x30ff75,_0x6e0068){return _0x30ff75-_0x6e0068;},'IHtKv':function(_0x50c7fe,_0x16605e){return _0x50c7fe/_0x16605e;}},_0x5356d5=Math['min'](_0x39ed75[_0x452d8e(0x31b,'(Yj#')](window['innerWidth'],0x3c)/0x348,_0x39ed75[_0x452d8e(0x331,'Qgk5')](window[_0x452d8e(0x36e,'XJ%&')]-0xd2,0x244));this[_0x452d8e(0x22b,'9Te2')]({'boardScale':Math[_0x452d8e(0x2f9,'MWdp')](0.4,Math[_0x452d8e(0x2a7,'g#IB')](_0x5356d5,1.7))});}[a0_0x1b4086(0x1da,'5MsP')](_0x5df270,_0x2b7152,_0x308ace,_0x69f9e3,_0x127816,_0x2b1da0){const _0x4bf1a4=a0_0x1b4086,_0x42ab14={'qYxIG':function(_0x1332cc,_0x4a0288){return _0x1332cc===_0x4a0288;},'TGAwO':_0x4bf1a4(0x319,'uQVW'),'ZMmqZ':_0x4bf1a4(0x280,'l87H'),'SVlQF':function(_0x34e045,_0x3be8ef){return _0x34e045<=_0x3be8ef;},'ogJAX':function(_0x3e34ba,_0xa76f9d){return _0x3e34ba/_0xa76f9d;},'dNGWf':_0x4bf1a4(0x335,'ZsiE'),'DdElH':function(_0x2c2a5b,_0x5ae243){return _0x2c2a5b-_0x5ae243;},'CAWBP':function(_0x262c65,_0x21877d){return _0x262c65+_0x21877d;},'gNvpx':function(_0x19fa04,_0x2b7b50){return _0x19fa04===_0x2b7b50;},'vJKGj':_0x4bf1a4(0x2a1,'onHj'),'POPQr':function(_0x51fe81,_0x24ed35){return _0x51fe81*_0x24ed35;},'WYnBT':function(_0x19243b,_0x38a9e6){return _0x19243b+_0x38a9e6;},'QPUKm':function(_0x2d3c48,_0x3dd921){return _0x2d3c48*_0x3dd921;},'ostob':function(_0x22fb60,_0x12483a){return _0x22fb60*_0x12483a;},'WgJOk':_0x4bf1a4(0x2d9,'[o69')},_0x2c9ba8=this[_0x4bf1a4(0x37c,'7RJZ')](_0x5df270,_0x2b7152),_0xd19d21=this['center'](_0x308ace,_0x69f9e3),_0x458c28=_0x42ab14['qYxIG'](_0x2b1da0,0x1)?_0x42ab14[_0x4bf1a4(0x2b4,'dwxH')]:'#4fd8ff',_0x5652d4={'move':_0x42ab14[_0x4bf1a4(0x1c6,'2m)0')],'add':_0x4bf1a4(0x27a,'xDXS'),'multiply':_0x4bf1a4(0x2b0,'3^T5'),'clash':_0x4bf1a4(0x1c9,'^&Lh')},_0x235e17=_0x5652d4[_0x127816]||_0x42ab14[_0x4bf1a4(0x1b6,'*o%c')],_0x362aee=performance[_0x4bf1a4(0x1b4,'ecJQ')]();for(let _0x506c49=0x0;_0x42ab14['SVlQF'](_0x506c49,0x10);_0x506c49++){const _0xdf1227=_0x42ab14[_0x4bf1a4(0x286,'XJ%&')](_0x506c49,0x10);this['fx'][_0x4bf1a4(0x235,'7RJZ')]({'kind':_0x42ab14[_0x4bf1a4(0x26b,'Qgk5')],'x':_0x2c9ba8['x']+(_0xd19d21['x']-_0x2c9ba8['x'])*_0xdf1227,'y':_0x2c9ba8['y']+_0x42ab14[_0x4bf1a4(0x2fd,'l87H')](_0xd19d21['y'],_0x2c9ba8['y'])*_0xdf1227,'born':_0x42ab14[_0x4bf1a4(0x1e5,'g#IB')](_0x362aee,_0x506c49*0xe),'life':0x17c,'r':3.2,'color':_0x458c28});}const _0x34c791=_0x42ab14[_0x4bf1a4(0x1b0,'weeM')](_0x127816,_0x42ab14[_0x4bf1a4(0x32c,'weeM')])?0x8:0x14;for(let _0x38389b=0x0;_0x38389b<_0x34c791;_0x38389b++){const _0x3bab57=_0x42ab14[_0x4bf1a4(0x210,'Qgk5')](Math['random']()*Math['PI'],0x2),_0x46ac79=_0x42ab14[_0x4bf1a4(0x2db,'7RJZ')](0.04,Math[_0x4bf1a4(0x1b9,'ecJQ')]()*0.11);this['fx'][_0x4bf1a4(0x2ec,'pVZi')]({'kind':_0x4bf1a4(0x1fe,'pVZi'),'x':_0xd19d21['x'],'y':_0xd19d21['y'],'vx':Math['cos'](_0x3bab57)*_0x46ac79,'vy':_0x42ab14[_0x4bf1a4(0x2e8,'ZLKP')](Math[_0x4bf1a4(0x326,'ecJQ')](_0x3bab57),_0x46ac79),'born':_0x42ab14[_0x4bf1a4(0x1be,'pVZi')](_0x362aee,0xc8),'life':0x258,'r':_0x42ab14[_0x4bf1a4(0x2f2,'weeM')](1.6,_0x42ab14[_0x4bf1a4(0x2c5,'AoxX')](Math[_0x4bf1a4(0x27b,'5MsP')](),2.4)),'color':_0x235e17});}const _0x171984={'add':'+','multiply':'×','clash':'−','move':''};_0x171984[_0x127816]&&this['fx']['push']({'kind':_0x42ab14[_0x4bf1a4(0x260,'9Te2')],'x':_0xd19d21['x'],'y':_0xd19d21['y']-0x14,'born':_0x362aee+0xc8,'life':0x3e8,'text':_0x171984[_0x127816],'color':_0x235e17});}[a0_0x1b4086(0x275,'ecJQ')](_0x2fe4ce){const _0x4b31e9=a0_0x1b4086;this['_raf']=requestAnimationFrame(this['_tick'][_0x4b31e9(0x36f,'uQVW')](this)),this[_0x4b31e9(0x363,'3)CV')](_0x2fe4ce),this[_0x4b31e9(0x33f,'gIT3')](_0x2fe4ce);}[a0_0x1b4086(0x2fa,'jt!9')](_0x10ed7d){const _0x42780b=a0_0x1b4086,_0x300e88={'PKgPj':function(_0x2f6361,_0x243c0c){return _0x2f6361!==_0x243c0c;},'UtKTT':function(_0x1bab06,_0x1ed56e){return _0x1bab06!==_0x1ed56e;},'wwlOx':function(_0x3c91b2,_0x3e54e6){return _0x3c91b2===_0x3e54e6;},'cAArT':function(_0x1b487e,_0x3ebd2d){return _0x1b487e*_0x3ebd2d;},'ZHwJc':function(_0x4eb11d,_0x51000d){return _0x4eb11d*_0x51000d;},'KWbAI':function(_0x138736,_0x12ab74){return _0x138736<_0x12ab74;},'lqiEz':function(_0x16e8d2,_0x47c493){return _0x16e8d2+_0x47c493;},'VwXeM':function(_0x4b8e86,_0x26b25c){return _0x4b8e86*_0x26b25c;},'eUmIi':function(_0x140db4,_0x2f4943){return _0x140db4*_0x2f4943;},'jxrFd':function(_0x472af4,_0x2950bb){return _0x472af4+_0x2950bb;},'ZmSIB':function(_0x624641,_0x3029f8){return _0x624641+_0x3029f8;}},_0x2663e8=this['_bgEl'];if(!_0x2663e8)return;const _0x3a8b38=window['innerWidth'],_0x28335e=window[_0x42780b(0x346,'j%#P')];(_0x300e88['PKgPj'](_0x2663e8[_0x42780b(0x337,'qau9')],_0x3a8b38)||_0x300e88[_0x42780b(0x2e1,'ed0Z')](_0x2663e8[_0x42780b(0x1e1,'uQVW')],_0x28335e))&&(_0x2663e8[_0x42780b(0x2d5,'NMBy')]=_0x3a8b38,_0x2663e8['height']=_0x28335e,this['stars']=null);const _0x217b45=_0x2663e8['getContext']('2d');_0x217b45[_0x42780b(0x220,'tC&0')](0x0,0x0,_0x3a8b38,_0x28335e);if(_0x300e88['wwlOx'](this[_0x42780b(0x344,'MWdp')][_0x42780b(0x2f7,'(Yj#')]??!![],![]))return;if(!this[_0x42780b(0x354,'q*(Q')]){this['stars']=[];for(let _0x2c6fd0=0x0;_0x2c6fd0<0x8c;_0x2c6fd0++){this[_0x42780b(0x230,'gIT3')]['push']({'x':Math['random']()*_0x3a8b38,'y':Math[_0x42780b(0x2cd,'[o69')]()*_0x28335e,'r':_0x300e88[_0x42780b(0x348,'jNE9')](Math[_0x42780b(0x253,'a#Z9')](),1.4)+0.3,'tw':_0x300e88[_0x42780b(0x34b,'Z7e6')](Math[_0x42780b(0x24f,'&ybx')](),6.28),'sp':0.004+Math[_0x42780b(0x2de,'XJ%&')]()*0.012});}}for(const _0x1a722c of this[_0x42780b(0x366,'5MsP')]){_0x1a722c['x']-=_0x1a722c['sp'];if(_0x300e88[_0x42780b(0x1de,'LP*P')](_0x1a722c['x'],-0x2))_0x1a722c['x']=_0x3a8b38+0x2;const _0x113ee4=_0x300e88[_0x42780b(0x2e3,'tC&0')](0.25,0.55*_0x300e88[_0x42780b(0x1dc,'&Fpa')](0.5,_0x300e88['VwXeM'](0.5,Math[_0x42780b(0x21a,'Z7e6')](_0x300e88['eUmIi'](_0x10ed7d,0.001)+_0x1a722c['tw']))));_0x217b45['beginPath'](),_0x217b45[_0x42780b(0x31c,'M*8A')](_0x1a722c['x'],_0x1a722c['y'],_0x1a722c['r'],0x0,6.29),_0x217b45[_0x42780b(0x271,'9Te2')]=_0x300e88[_0x42780b(0x233,'a#Z9')](_0x300e88[_0x42780b(0x321,'NJ$@')](_0x42780b(0x2c7,'ZLKP'),_0x113ee4[_0x42780b(0x374,'Oc$q')](0x2)),')'),_0x217b45[_0x42780b(0x358,'j%#P')]();}}['_drawFx'](_0x229fbc){const _0x2bade9=a0_0x1b4086,_0x39afb0={'YQEei':function(_0x3aca6d,_0x5e4c57){return _0x3aca6d<_0x5e4c57;},'pbAyE':function(_0x726a42,_0x1e4ed0){return _0x726a42/_0x1e4ed0;},'ORtOx':function(_0x16ab45,_0x23bea2){return _0x16ab45===_0x23bea2;},'yXxWI':function(_0x463c18,_0x54c63c){return _0x463c18*_0x54c63c;},'CvYdu':_0x2bade9(0x338,'[o69'),'QhzjP':function(_0x14ad46,_0x1c04df){return _0x14ad46===_0x1c04df;},'RpxLe':_0x2bade9(0x1e3,'&ybx'),'UpDeo':function(_0xaa6c91,_0xf4f2b5){return _0xaa6c91-_0xf4f2b5;}},_0x5b02a9=this['_fxEl'];if(!_0x5b02a9)return;const _0x52bfb8=_0x5b02a9[_0x2bade9(0x294,'&Fpa')]('2d');_0x52bfb8[_0x2bade9(0x378,'2m)0')](0x0,0x0,0x348,0x244);if(!this['fx'][_0x2bade9(0x22e,'weeM')])return;const _0x1f0b1c=[];for(const _0x20089d of this['fx']){const _0x64c904=_0x229fbc-_0x20089d[_0x2bade9(0x1eb,'NMBy')];if(_0x39afb0[_0x2bade9(0x340,'3^T5')](_0x64c904,0x0)){_0x1f0b1c[_0x2bade9(0x32d,'@PRM')](_0x20089d);continue;}if(_0x64c904>_0x20089d[_0x2bade9(0x1d8,'l87H')])continue;const _0x55b47f=_0x39afb0[_0x2bade9(0x2f5,'r[Sr')](_0x64c904,_0x20089d['life']),_0x3dfddf=0x1-_0x55b47f;if(_0x39afb0[_0x2bade9(0x1c3,'uQVW')](_0x20089d['kind'],'dot'))_0x52bfb8[_0x2bade9(0x215,'ed0Z')](),_0x52bfb8['arc'](_0x20089d['x'],_0x20089d['y'],_0x39afb0[_0x2bade9(0x1fb,'XJ%&')](_0x20089d['r'],0x1-_0x55b47f*0.6),0x0,6.29),_0x52bfb8['fillStyle']=_0x20089d[_0x2bade9(0x365,'NJ$@')],_0x52bfb8['globalAlpha']=_0x3dfddf*0.9,_0x52bfb8[_0x2bade9(0x248,'g#IB')]=_0x20089d['color'],_0x52bfb8['shadowBlur']=0x8,_0x52bfb8[_0x2bade9(0x2a4,'onHj')]();else{if(_0x39afb0[_0x2bade9(0x2dd,'&Fpa')](_0x20089d[_0x2bade9(0x29a,'OEr4')],_0x39afb0[_0x2bade9(0x2b1,'j%#P')]))_0x20089d['x']+=_0x20089d['vx']*0x10,_0x20089d['y']+=_0x20089d['vy']*0x10,_0x20089d['vx']*=0.96,_0x20089d['vy']*=0.96,_0x52bfb8[_0x2bade9(0x2b8,'LP*P')](),_0x52bfb8[_0x2bade9(0x2ad,'^&Lh')](_0x20089d['x'],_0x20089d['y'],_0x39afb0[_0x2bade9(0x329,'e#33')](_0x20089d['r'],0x1-_0x55b47f),0x0,6.29),_0x52bfb8[_0x2bade9(0x1af,'&ybx')]=_0x20089d[_0x2bade9(0x33b,'a#Z9')],_0x52bfb8[_0x2bade9(0x31d,'&Ih3')]=_0x3dfddf,_0x52bfb8[_0x2bade9(0x252,'pVZi')]=_0x20089d[_0x2bade9(0x1cb,'AoxX')],_0x52bfb8['shadowBlur']=0xa,_0x52bfb8['fill']();else _0x39afb0[_0x2bade9(0x2a9,'jNE9')](_0x20089d['kind'],_0x2bade9(0x35f,'g#IB'))&&(_0x52bfb8[_0x2bade9(0x37a,'3^T5')]=_0x3dfddf,_0x52bfb8[_0x2bade9(0x1bd,'XJ%&')]=_0x2bade9(0x357,'Qgk5'),_0x52bfb8[_0x2bade9(0x223,'2m)0')]=_0x39afb0[_0x2bade9(0x328,'a#Z9')],_0x52bfb8['fillStyle']=_0x20089d[_0x2bade9(0x29c,'Z7e6')],_0x52bfb8['shadowColor']=_0x20089d[_0x2bade9(0x350,'NMBy')],_0x52bfb8[_0x2bade9(0x29d,'ecJQ')]=0xe,_0x52bfb8['fillText'](_0x20089d[_0x2bade9(0x264,'a#Z9')],_0x20089d['x'],_0x39afb0[_0x2bade9(0x2f0,'a#Z9')](_0x20089d['y'],_0x39afb0[_0x2bade9(0x270,'5MsP')](_0x55b47f,0x2a))));}_0x52bfb8[_0x2bade9(0x21b,'g#IB')]=0x1,_0x52bfb8['shadowBlur']=0x0,_0x1f0b1c['push'](_0x20089d);}this['fx']=_0x1f0b1c;}[a0_0x1b4086(0x1f6,'7RJZ')](){const _0x4be350=a0_0x1b4086,_0x16cc79={'zDhrt':function(_0x15fdb9,_0x534bf2){return _0x15fdb9===_0x534bf2;}},_0x133c44=this[_0x4be350(0x2a3,'^&Lh')];if(!_0x133c44||_0x133c44[_0x4be350(0x25e,'3^T5')])return![];if(_0x133c44[_0x4be350(0x207,'jNE9')]==='ai'&&_0x16cc79[_0x4be350(0x1c1,'a#Z9')](_0x133c44[_0x4be350(0x29e,'MWdp')],0x2))return![];return!![];}[a0_0x1b4086(0x30f,'[o69')](_0x3ee459,_0x1ac481){const _0x31a64e=a0_0x1b4086,_0x4427d6={'ROjSF':function(_0x15dce3,_0x3f96f1){return _0x15dce3+_0x3f96f1;},'qXoXL':function(_0x11c082,_0x1ed14d){return _0x11c082>_0x1ed14d;},'wWFET':function(_0x35093b,_0x480e76){return _0x35093b===_0x480e76;},'Egopk':function(_0x1c68a0,_0x5c6c8d){return _0x1c68a0===_0x5c6c8d;}},_0x41bbf1=this[_0x31a64e(0x290,'j%#P')];if(!this[_0x31a64e(0x265,'MWdp')]())return;const _0x1fb9b8=_0x4427d6[_0x31a64e(0x26d,'onHj')](_0x3ee459+',',_0x1ac481),_0x3d9494=_0x41bbf1[_0x31a64e(0x303,'cck5')][_0x1fb9b8];if(_0x4427d6[_0x31a64e(0x28d,'2m)0')](_0x41bbf1[_0x31a64e(0x35b,'&Ih3')][_0x41bbf1[_0x31a64e(0x1bf,'ZsiE')]],0x0)){if(_0x3d9494&&_0x4427d6['wWFET'](_0x3d9494[_0x31a64e(0x285,'^&Lh')],_0x41bbf1[_0x31a64e(0x2f1,'5MsP')])){_0x41bbf1['payDebt'](_0x1fb9b8),this[_0x31a64e(0x1db,'gIT3')](_0x3ee459,_0x1ac481,_0x31a64e(0x1c5,'3^T5')),this[_0x31a64e(0x31f,'onHj')]({'selected':null,'targets':[]}),this[_0x31a64e(0x1b8,'@PRM')]();if(!_0x41bbf1[_0x31a64e(0x23c,'(Yj#')])_0x41bbf1[_0x31a64e(0x1fd,'Oc$q')]();this['_sync']();}return;}const _0x3065ad=this[_0x31a64e(0x20c,'qau9')][_0x31a64e(0x1ae,'Qgk5')];if(_0x3065ad){const _0x1aa13c=this[_0x31a64e(0x2e9,'Z7e6')][_0x31a64e(0x1df,'&Ih3')][_0x31a64e(0x2bd,'a#Z9')](_0x33cd4e=>_0x33cd4e['q']===_0x3ee459&&_0x33cd4e['r']===_0x1ac481);if(_0x1aa13c){_0x41bbf1[_0x31a64e(0x2ac,'^&Lh')](_0x3065ad['q'],_0x3065ad['r'],_0x3ee459,_0x1ac481),this[_0x31a64e(0x1bc,'jNE9')]({'selected':null,'targets':[]});return;}}_0x3d9494&&_0x4427d6[_0x31a64e(0x2c6,'e#33')](_0x3d9494[_0x31a64e(0x376,'e#33')],_0x41bbf1[_0x31a64e(0x228,'Z7e6')])?_0x3065ad&&_0x4427d6['Egopk'](_0x3065ad['q'],_0x3ee459)&&_0x3065ad['r']===_0x1ac481?this[_0x31a64e(0x244,'Z7e6')]({'selected':null,'targets':[]}):this[_0x31a64e(0x21d,'AoxX')]({'selected':{'q':_0x3ee459,'r':_0x1ac481},'targets':_0x41bbf1[_0x31a64e(0x27c,'Oc$q')](_0x3ee459,_0x1ac481)}):this['setState']({'selected':null,'targets':[]});}[a0_0x1b4086(0x2b5,'M*8A')](_0x42736d,_0x20aa02,_0x1cc51b){const _0x549090=a0_0x1b4086,_0x183bae={'EAfdL':function(_0x357c7d,_0xddcc9a){return _0x357c7d*_0xddcc9a;}},_0x1614f9=this['center'](_0x42736d,_0x20aa02),_0x2ae0dd=performance[_0x549090(0x289,'gIT3')]();for(let _0x574d78=0x0;_0x574d78<0x10;_0x574d78++){const _0x446b1a=Math[_0x549090(0x2a8,'e#33')]()*Math['PI']*0x2,_0x1cd16c=0.05+Math[_0x549090(0x2c8,'tC&0')]()*0.1;this['fx'][_0x549090(0x250,'(Yj#')]({'kind':_0x549090(0x31e,'LP*P'),'x':_0x1614f9['x'],'y':_0x1614f9['y'],'vx':Math[_0x549090(0x30e,'weeM')](_0x446b1a)*_0x1cd16c,'vy':_0x183bae[_0x549090(0x25f,'2m)0')](Math[_0x549090(0x203,'e#33')](_0x446b1a),_0x1cd16c),'born':_0x2ae0dd,'life':0x226,'r':0x2+Math[_0x549090(0x253,'a#Z9')]()*0x2,'color':_0x1cc51b});}}[a0_0x1b4086(0x2ca,'MWdp')](){const _0x439702=a0_0x1b4086,_0x1fa869={'Zqlqm':_0x439702(0x2bf,'@PRM'),'Mluej':'#c94dff','HVemA':'#e3aaff','lqVoP':_0x439702(0x1d9,'MWdp'),'niXkj':_0x439702(0x343,'OEr4'),'ldyTa':_0x439702(0x25d,'K[6u'),'LJqTr':function(_0x812c5c,_0x439c9c){return _0x812c5c===_0x439c9c;},'DBMzx':_0x439702(0x2a6,'jt!9'),'Vvqbq':_0x439702(0x298,'Oc$q'),'RwhMy':function(_0x12f20b,_0x4c0562){return _0x12f20b%_0x4c0562;},'kmXaT':function(_0x3b103,_0x402c76){return _0x3b103===_0x402c76;},'UCTPj':function(_0x572fc7,_0x42b383){return _0x572fc7>_0x42b383;},'xrJlg':_0x439702(0x2f3,'M*8A'),'xvHXj':_0x439702(0x258,'Oc$q'),'HEmVd':_0x439702(0x28b,'ed0Z'),'bAQjk':'#ff3b5f','BFbCz':_0x439702(0x22a,'MWdp'),'ynHpv':_0x439702(0x212,'&ybx'),'JfOeJ':function(_0x135a26,_0x3206d0){return _0x135a26<=_0x3206d0;},'TDGwp':function(_0x52de8b,_0x107d46){return _0x52de8b-_0x107d46;},'oGiNJ':_0x439702(0x2ab,'NJ$@'),'qBTEh':_0x439702(0x2e7,'ZsiE'),'jXHMf':'drop-shadow(0\x200\x208px\x20rgba(255,255,255,0.35))','xbRjh':function(_0x1ae57c,_0x161ae3){return _0x1ae57c+_0x161ae3;},'YaZmT':'center','sWjvg':_0x439702(0x34e,'^&Lh'),'UHywj':function(_0x5bcf99,_0x376c07){return _0x5bcf99+_0x376c07;},'ATICP':_0x439702(0x216,'LP*P'),'rEsfj':_0x439702(0x2e6,'3)CV'),'ihKwk':function(_0x2941bc,_0x2d563a){return _0x2941bc===_0x2d563a;},'CvAOE':function(_0x3740a7,_0x5f1766){return _0x3740a7+_0x5f1766;},'GfgOv':_0x439702(0x22f,'ZLKP'),'TXbhs':'url(#gradCyan)','nSoOZ':'rgba(0,0,0,0.7)','BUnQQ':'rgba(255,230,150,0.22)','AaIQI':function(_0x2ffe34,_0x5aa03a){return _0x2ffe34+_0x5aa03a;},'notVr':function(_0x48d457,_0x702b93){return _0x48d457+_0x702b93;},'Qgwjx':function(_0x157fff,_0x56ea48){return _0x157fff+_0x56ea48;},'AJXSb':_0x439702(0x1e9,'r[Sr'),'yBIMy':_0x439702(0x2b9,'K[6u'),'nZPdw':function(_0x5b4989,_0x23a2d0){return _0x5b4989-_0x23a2d0;},'pGGDB':_0x439702(0x35e,'2m)0'),'ifzdu':_0x439702(0x27f,'l87H'),'Xboxs':'\x27Outfit\x27,\x20sans-serif','WFMNA':'GOLD','rHcKV':_0x439702(0x34c,'xDXS'),'wrFsc':function(_0x4d0361,_0x22526c){return _0x4d0361===_0x22526c;},'FISTw':_0x439702(0x226,'K[6u'),'AiMhA':'rgba(245,197,66,0.5)','ZHRPO':_0x439702(0x1d3,'e#33'),'xfRKZ':_0x439702(0x342,'XJ%&'),'AgQIK':'GOLD\x20MOVES','wTxnU':_0x439702(0x2c4,'&ybx'),'hAMbb':function(_0x140181,_0x9544b0){return _0x140181&&_0x9544b0;},'emUPF':_0x439702(0x232,'OEr4'),'tvGFF':function(_0x23afe6,_0x5c54fd){return _0x23afe6+_0x5c54fd;},'BBCgh':function(_0x504bd9,_0x2f2046){return _0x504bd9(_0x2f2046);},'MuPXI':'#8c82b0','fGsEM':_0x439702(0x364,'Z7e6'),'LBZpp':_0x439702(0x299,'*o%c')},_0x405bf8=this[_0x439702(0x351,'7RJZ')],_0x467801=this[_0x439702(0x318,'l87H')][_0x439702(0x225,'ZsiE')]??![],_0x4a6818=this[_0x439702(0x32f,'NJ$@')][_0x439702(0x291,'cck5')]??!![];if(_0x405bf8)_0x405bf8['isTimerPaused']=!_0x4a6818;const _0xbc87bf=[],_0xe1e974=[],_0x3c1594=[],_0x7b603e=this[_0x439702(0x2e9,'Z7e6')]['selected'],_0x3aeb56=this[_0x439702(0x2c9,'jNE9')][_0x439702(0x2ee,'Oc$q')],_0x43e1cb=_0x405bf8?_0x1fa869['UCTPj'](_0x405bf8[_0x439702(0x305,'gIT3')][_0x405bf8[_0x439702(0x311,'LK8U')]],0x0)&&this[_0x439702(0x352,'[o69')]():![];if(_0x405bf8){const _0x4c32b7={};_0x3aeb56['forEach'](_0x11a711=>{_0x4c32b7[_0x11a711['q']+','+_0x11a711['r']]=_0x11a711;});const _0x2cf3d0={'move':_0x1fa869[_0x439702(0x1bb,'OEr4')],'add':_0x1fa869[_0x439702(0x201,'pVZi')],'multiply':_0x1fa869[_0x439702(0x35d,'jNE9')],'clash':_0x1fa869[_0x439702(0x1f1,'ZLKP')]},_0x49fba3={'move':_0x439702(0x323,'[o69'),'add':'rgba(60,227,138,0.1)','multiply':_0x1fa869[_0x439702(0x1ca,'gIT3')],'clash':_0x1fa869['ynHpv']};for(let _0x5f588f=-0x3;_0x1fa869['JfOeJ'](_0x5f588f,0x3);_0x5f588f++){for(let _0x146c9f=Math[_0x439702(0x295,'jNE9')](-0x3,_0x1fa869[_0x439702(0x2b7,'3)CV')](-_0x5f588f,0x3));_0x146c9f<=Math['min'](0x3,-_0x5f588f+0x3);_0x146c9f++){const _0x36df9c=this[_0x439702(0x36c,'weeM')](_0x5f588f,_0x146c9f),_0x304d60=_0x5f588f+','+_0x146c9f,_0x18124a=_0x4c32b7[_0x304d60],_0x237c7b=_0x7b603e&&_0x7b603e['q']===_0x5f588f&&_0x7b603e['r']===_0x146c9f;let _0x41f947=_0x439702(0x1cf,'ed0Z'),_0x841efa='rgba(140,130,176,0.22)',_0x5d3eb1='none';if(_0x237c7b)_0x41f947=_0x1fa869[_0x439702(0x367,'pVZi')],_0x841efa=_0x1fa869['qBTEh'],_0x5d3eb1=_0x1fa869[_0x439702(0x33d,'K[6u')];else _0x18124a&&(_0x41f947=_0x49fba3[_0x18124a[_0x439702(0x333,'K[6u')]],_0x841efa=_0x2cf3d0[_0x18124a['actionType']],_0x5d3eb1=_0x1fa869[_0x439702(0x22c,'&Ih3')](_0x439702(0x26a,'tC&0')+_0x2cf3d0[_0x18124a[_0x439702(0x1e6,'dwxH')]],')'));_0xbc87bf['push']({'key':_0x304d60,'cx':_0x36df9c['x'],'coordStyle':{'position':_0x439702(0x217,'&ybx'),'left':_0x36df9c['x']-0x1e,'top':_0x36df9c['y']+0x18,'width':0x3c,'textAlign':_0x1fa869[_0x439702(0x377,'Qgk5')],'fontSize':0x9,'fontFamily':_0x439702(0x26f,'l87H'),'color':_0x439702(0x25b,'MWdp')},'previewStyle':{'position':_0x439702(0x267,'uQVW'),'left':_0x36df9c['x']-0x28,'top':_0x36df9c['y']-0x28,'width':0x50,'textAlign':'center','fontSize':0xf,'fontWeight':0x2bc,'fontFamily':_0x1fa869[_0x439702(0x1b3,'Qgk5')],'color':_0x18124a?_0x2cf3d0[_0x18124a[_0x439702(0x1ff,'g#IB')]]:_0x439702(0x1ad,'K[6u'),'textShadow':'0\x200\x204px\x20#05030a,\x200\x201px\x202px\x20#05030a,\x200\x200\x208px\x20#05030a'},'pts':this[_0x439702(0x219,'&Ih3')](0x6,0x29,-0x5a,_0x36df9c['x'],_0x36df9c['y']),'sidePts':this[_0x439702(0x35a,'LP*P')](0x6,0x29,-0x5a,_0x36df9c['x'],_0x1fa869[_0x439702(0x1b7,'g#IB')](_0x36df9c['y'],0x5)),'sideFill':_0x1fa869[_0x439702(0x339,'qau9')],'fill':_0x41f947,'stroke':_0x841efa,'filter':_0x5d3eb1,'coordLabel':_0x467801?_0x1fa869[_0x439702(0x262,'AoxX')](_0x5f588f,',')+_0x146c9f:'','preview':_0x18124a&&_0x18124a[_0x439702(0x1f7,'7RJZ')]!==_0x439702(0x317,'2m)0')?String(_0x18124a['previewValue']):'','previewColor':_0x18124a?_0x2cf3d0[_0x18124a[_0x439702(0x200,'&Fpa')]]:_0x439702(0x2cb,'[o69'),'onClick':()=>this[_0x439702(0x293,'qau9')](_0x5f588f,_0x146c9f)});if(_0x18124a&&_0x7b603e){const _0x2d5ff1=this[_0x439702(0x324,'XJ%&')](_0x7b603e['q'],_0x7b603e['r']);_0x3c1594[_0x439702(0x30c,'NMBy')]({'x1':_0x2d5ff1['x'],'y1':_0x2d5ff1['y'],'x2':_0x36df9c['x'],'y2':_0x36df9c['y'],'color':_0x2cf3d0[_0x18124a[_0x439702(0x36b,'XJ%&')]],'glow':_0x1fa869[_0x439702(0x371,'3)CV')](_0x1fa869[_0x439702(0x2ed,'[o69')]('drop-shadow(0\x200\x204px\x20',_0x2cf3d0[_0x18124a[_0x439702(0x37b,'e#33')]]),')')});}}}for(const _0x1ccc8e in _0x405bf8[_0x439702(0x218,'jNE9')]){const _0x25f157=_0x405bf8[_0x439702(0x31a,'OEr4')][_0x1ccc8e],[_0x4ad1f5,_0x154f3b]=_0x1ccc8e[_0x439702(0x2d7,'*o%c')](',')['map'](Number),_0x10b7e7=this[_0x439702(0x287,'@PRM')](_0x4ad1f5,_0x154f3b),_0x16964f=_0x7b603e&&_0x7b603e['q']===_0x4ad1f5&&_0x1fa869[_0x439702(0x2d6,'ZsiE')](_0x7b603e['r'],_0x154f3b),_0x511abf=_0x25f157[_0x439702(0x361,'XJ%&')]===0x1,_0x44ac22=_0x25f157['isAnomaly']?_0x439702(0x1cd,'onHj'):_0x511abf?_0x1fa869[_0x439702(0x241,'MWdp')]:_0x1fa869[_0x439702(0x274,'ZsiE')],_0x4dda69=_0x43e1cb&&_0x1fa869['ihKwk'](_0x25f157[_0x439702(0x204,'9Te2')],_0x405bf8[_0x439702(0x1ea,'(Yj#')]);_0xe1e974[_0x439702(0x246,'^&Lh')]({'key':_0x1ccc8e,'transform':_0x1fa869[_0x439702(0x313,'5MsP')](_0x1fa869[_0x439702(0x30b,'^&Lh')](_0x1fa869[_0x439702(0x1ec,'onHj')](_0x1fa869[_0x439702(0x273,'&Fpa')](_0x1fa869[_0x439702(0x2fc,'*o%c')]('translate(',_0x10b7e7['x'][_0x439702(0x2d0,'jNE9')](0x1)),','),_0x10b7e7['y'][_0x439702(0x278,'weeM')](0x1)),')'),_0x16964f?_0x439702(0x26e,'[o69'):''),'pts':this[_0x439702(0x24c,'OEr4')](_0x25f157['type']),'facetPts':this[_0x439702(0x2da,'q*(Q')](_0x25f157[_0x439702(0x1ce,'q*(Q')],0.55),'ringPts':_0x25f157[_0x439702(0x1f2,'e#33')]===_0x439702(0x315,'ecJQ')?this['polyPts'](0x6,0x24,-0x5a):'','ringColor':_0x44ac22,'anomPts':_0x25f157[_0x439702(0x341,'pVZi')]||_0x4dda69?this[_0x439702(0x2eb,'e#33')](0x6,0x26,0x0):'','fill':_0x25f157[_0x439702(0x32a,'uQVW')]?_0x1fa869[_0x439702(0x34a,'OEr4')]:_0x511abf?_0x439702(0x20a,'Z7e6'):_0x1fa869[_0x439702(0x2c3,'@PRM')],'sideFill':_0x1fa869['nSoOZ'],'facetFill':_0x511abf?_0x1fa869[_0x439702(0x1d5,'&ybx')]:_0x439702(0x205,'ed0Z'),'stroke':_0x44ac22,'glow':_0x1fa869['AaIQI'](_0x1fa869[_0x439702(0x356,'gIT3')](_0x1fa869[_0x439702(0x1e7,'LP*P')](_0x439702(0x1f8,'q*(Q'),_0x16964f?0xc:0x6)+_0x1fa869[_0x439702(0x28a,'ecJQ')],_0x44ac22),')'),'textWrapStyle':{'position':_0x1fa869['yBIMy'],'left':_0x1fa869[_0x439702(0x21c,'xDXS')](_0x10b7e7['x'],0x2d),'top':_0x1fa869[_0x439702(0x1e8,'ecJQ')](_0x10b7e7['y'],0xe),'width':0x5a,'display':_0x1fa869['pGGDB'],'flexDirection':_0x1fa869[_0x439702(0x2f6,'LK8U')],'alignItems':_0x439702(0x304,'jt!9'),'gap':0x3},'valueStyle':{'fontSize':0x15,'fontWeight':0x384,'fontFamily':_0x1fa869['Xboxs'],'lineHeight':0x1,'color':_0x44ac22,'textShadow':_0x439702(0x379,'dwxH')},'value':String(_0x25f157[_0x439702(0x26c,'MWdp')]),'label':_0x25f157[_0x439702(0x254,'jNE9')]});}}const _0x5b0907=_0x405bf8?_0x405bf8[_0x439702(0x1d7,'qau9')]:0x1,_0x35d083=_0x5b0907===0x1,_0x3ec84e=_0x405bf8?_0x405bf8[_0x439702(0x292,'jt!9')][_0x439702(0x316,'a#Z9')](0x0,0x1e):[],_0x930fe5=_0x3ec84e[_0x439702(0x1f4,'^&Lh')]((_0x1d6713,_0x4e5b3b)=>{const _0x486242=_0x439702;let _0x3b522e=_0x486242(0x1b5,'MWdp'),_0x2e2b43=_0x1fa869[_0x486242(0x24d,'Z7e6')];if(/ANOMALY/i[_0x486242(0x306,'5MsP')](_0x1d6713))_0x3b522e=_0x1fa869[_0x486242(0x25a,'tC&0')],_0x2e2b43=_0x1fa869[_0x486242(0x23e,'AoxX')];else{if(/^Gold/i[_0x486242(0x28e,'NJ$@')](_0x1d6713))_0x3b522e='#f5c542',_0x2e2b43=_0x1fa869[_0x486242(0x36d,'cck5')];else/^Silver/i[_0x486242(0x1c2,'gIT3')](_0x1d6713)&&(_0x3b522e=_0x1fa869[_0x486242(0x2fb,'LK8U')],_0x2e2b43=_0x1fa869['ldyTa']);}return{'key':_0x4e5b3b,'text':_0x1d6713,'color':_0x3b522e,'textColor':_0x2e2b43};}),_0x28b7f9=_0x405bf8?_0x405bf8[_0x439702(0x2dc,'AoxX')]:0x0,_0x3b955=_0x405bf8?_0x405bf8[_0x439702(0x2c0,'g#IB')]:![],_0x52394d=_0x3b955?_0x439702(0x1b2,'ZLKP'):_0x1fa869['LJqTr'](_0x28b7f9,0x1)?_0x439702(0x1d2,'weeM'):_0x439702(0x256,'uQVW'),_0x126e7f=_0x3b955?_0x1fa869[_0x439702(0x261,'ed0Z')](_0x439702(0x2ba,'MWdp'),_0x1fa869['ihKwk'](_0x28b7f9,0x1)?_0x1fa869[_0x439702(0x214,'LK8U')]:_0x28b7f9===0x2?_0x1fa869[_0x439702(0x327,'ZLKP')]:_0x439702(0x272,'MWdp')):_0x1fa869[_0x439702(0x296,'r[Sr')](_0x28b7f9,0x1)?'GOLD\x20VICTORY':_0x439702(0x34f,'Qgk5'),_0x496071=_0x405bf8?_0x405bf8[_0x439702(0x372,'XJ%&')][_0x5b0907]:0x0,_0x44df9b=_0x405bf8?_0x405bf8[_0x439702(0x347,'AoxX')]:'ai',_0xb202af=_0x405bf8?_0x405bf8['aiDifficulty']:_0x439702(0x257,'qau9');return{'bgCanvasRef':_0x2f2910=>{const _0x5bffbf=_0x439702;this[_0x5bffbf(0x234,'[o69')]=_0x2f2910;},'fxCanvasRef':_0x4a5077=>{const _0x2426d9=_0x439702;this[_0x2426d9(0x2ef,'jt!9')]=_0x4a5077;},'boardScale':this[_0x439702(0x236,'j%#P')][_0x439702(0x1c7,'&ybx')],'cells':_0xbc87bf,'pieces':_0xe1e974,'lines':_0x3c1594,'goldTotal':_0x405bf8?String(_0x405bf8[_0x439702(0x1ed,'&Fpa')][0x1]):'—','silverTotal':_0x405bf8?String(_0x405bf8['activeTotal'][0x2]):'—','silverModeLabel':_0x1fa869[_0x439702(0x2a0,'gIT3')](_0x44df9b,'ai')?_0x1fa869['Qgwjx'](_0x1fa869[_0x439702(0x33e,'NMBy')],_0xb202af['toUpperCase']()):_0x439702(0x332,'ecJQ'),'goldPanelBorder':_0x35d083?_0x1fa869['AiMhA']:_0x439702(0x330,'&Fpa'),'cyanPanelBorder':!_0x35d083?_0x1fa869[_0x439702(0x1f9,'*o%c')]:_0x1fa869[_0x439702(0x2be,'ZsiE')],'turnLabel':_0x35d083?_0x1fa869[_0x439702(0x2aa,'l87H')]:_0x1fa869[_0x439702(0x362,'(Yj#')],'turnDotColor':_0x35d083?_0x1fa869[_0x439702(0x1f3,'*o%c')]:_0x1fa869[_0x439702(0x33a,'MWdp')],'timerText':_0x1fa869[_0x439702(0x1e2,'ed0Z')](_0x4a6818,_0x405bf8)&&_0x405bf8['gameMode']!==_0x1fa869[_0x439702(0x302,'l87H')]?_0x1fa869[_0x439702(0x221,'3)CV')](':',_0x1fa869[_0x439702(0x239,'q*(Q')](String,this['state']['timer'])['padStart'](0x2,'0')):'','timerColor':_0x1fa869['JfOeJ'](this['state']['timer'],0x5)?_0x1fa869[_0x439702(0x1f1,'ZLKP')]:_0x1fa869[_0x439702(0x1b1,'q*(Q')],'debtActive':_0x43e1cb,'debtText':_0x1fa869[_0x439702(0x263,'ZsiE')]+_0x496071,'logOpen':this[_0x439702(0x27e,'onHj')]['logOpen'],'logEntries':_0x930fe5,'logBtnLabel':this[_0x439702(0x325,'K[6u')][_0x439702(0x20e,'Oc$q')]?_0x1fa869[_0x439702(0x355,'XJ%&')]:'LOG','modeLabel':_0x44df9b==='ai'?_0x439702(0x30d,'NMBy'):'2\x20PLAYER','difficultyLabel':_0xb202af['toUpperCase'](),'gameOver':_0x405bf8?_0x405bf8[_0x439702(0x2f8,'jNE9')]:![],'winTitle':_0x126e7f,'winColor':_0x52394d,'winMessage':this['state']['winMsg']||'','onNewMatch':()=>{const _0x35d200=_0x439702;if(!_0x405bf8)return;_0x405bf8[_0x35d200(0x23f,'qau9')](),this[_0x35d200(0x29f,'OEr4')]({'selected':null,'targets':[],'winMsg':null}),this[_0x35d200(0x288,'*o%c')]();},'onToggleMode':()=>{const _0x581345=_0x439702;if(!_0x405bf8)return;_0x405bf8['gameMode']=_0x1fa869[_0x581345(0x249,'AoxX')](_0x405bf8[_0x581345(0x24b,'(Yj#')],'ai')?'pvp':'ai',_0x405bf8[_0x581345(0x28c,'&Fpa')](),this['setState']({'selected':null,'targets':[],'winMsg':null}),this[_0x581345(0x34d,'9Te2')]();},'onCycleDifficulty':()=>{const _0x53a147=_0x439702;if(!_0x405bf8)return;const _0x28edcc=[_0x1fa869[_0x53a147(0x209,'g#IB')],_0x53a147(0x28f,'ecJQ'),_0x1fa869[_0x53a147(0x370,'Z7e6')]];_0x405bf8[_0x53a147(0x310,'OEr4')]=_0x28edcc[_0x1fa869[_0x53a147(0x237,'j%#P')](_0x28edcc[_0x53a147(0x23b,'@PRM')](_0x405bf8[_0x53a147(0x1c0,'uQVW')])+0x1,0x3)],this[_0x53a147(0x1e4,'jt!9')]();},'onUndo':()=>{const _0x4877ea=_0x439702;if(!_0x405bf8)return;_0x405bf8['undo']();if(_0x405bf8['gameMode']==='ai'&&_0x1fa869[_0x4877ea(0x2c1,'LK8U')](_0x405bf8[_0x4877ea(0x1d0,'xDXS')],0x2))_0x405bf8[_0x4877ea(0x20f,'2m)0')]();this['setState']({'selected':null,'targets':[]}),this[_0x4877ea(0x353,'g#IB')]();},'onToggleLog':()=>this[_0x439702(0x31f,'onHj')](_0x4576f2=>({'logOpen':!_0x4576f2[_0x439702(0x2e0,'NJ$@')]})),'onRematch':()=>{const _0x4e20cc=_0x439702;if(!_0x405bf8)return;_0x405bf8[_0x4e20cc(0x222,'dwxH')](),this[_0x4e20cc(0x32b,'(Yj#')]({'selected':null,'targets':[],'winMsg':null}),this['_sync']();}};}}</script>
 </body>
 </html>
